@@ -46,7 +46,7 @@ jobs:
       - name: Stage resource
         run: |
           mkdir -p dist/sd-computers/web dist/sd-computers/docs
-          cp fxmanifest.lua README.md dist/sd-computers/
+          cp fxmanifest.lua README.md LICENSE dist/sd-computers/
           cp -r bridge client server shared configs locales dist/sd-computers/
           cp -r docs/items dist/sd-computers/docs/items
           cp -r web/build dist/sd-computers/web/build
