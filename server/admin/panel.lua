@@ -55,11 +55,14 @@ local function canView(source)
     return IsPlayerAceAllowed(src, 'command.' .. A.Command) or IsPlayerAceAllowed(src, A.EditAce)
 end
 
----May this player change anything?
+---May this player change anything? The edit ace, or every command: txAdmin's standard
+---`add_ace group.admin command allow` gives admins that, so they can edit even on a server that
+---refuses the edit ace's grant below. A ViewGroup only gets command.<Command>, so it stays view only.
 ---@param source integer player server id
 ---@return boolean
 local function canEdit(source)
-    return IsPlayerAceAllowed(tostring(source), A.EditAce)
+    local src = tostring(source)
+    return IsPlayerAceAllowed(src, A.EditAce) or IsPlayerAceAllowed(src, 'command')
 end
 
 ---Everything the panel shows, in one table: every computer (placed from here, or from
@@ -367,3 +370,17 @@ end)
 -- it that command, and ox_lib is the one resource a standard permissions.cfg already gives it to.
 lib.addAce(A.Group, A.EditAce)
 if A.ViewGroup then lib.addAce(A.ViewGroup, 'command.' .. A.Command) end
+
+-- A server without ox_lib's lines (add_ace resource.ox_lib command.add_ace allow) refuses those
+-- grants with nothing more than "Access denied" in the console, and the panel opened as view only
+-- for admins. Say what to add instead.
+SetTimeout(1000, function()
+    if not IsPrincipalAceAllowed(A.Group, A.EditAce) then
+        log.warn('admin', '%s could not be given %s: this server does not let ox_lib run add_ace. Admins allowed every command (txAdmin\'s `add_ace group.admin command allow`) can still edit; for anyone else, add to your server.cfg: add_ace %s %s allow',
+            A.Group, A.EditAce, A.Group, A.EditAce)
+    end
+    if A.ViewGroup and not IsPrincipalAceAllowed(A.ViewGroup, 'command.' .. A.Command) then
+        log.warn('admin', '%s could not be given command.%s: this server does not let ox_lib run add_ace. Add to your server.cfg: add_ace %s command.%s allow',
+            A.ViewGroup, A.Command, A.ViewGroup, A.Command)
+    end
+end)
