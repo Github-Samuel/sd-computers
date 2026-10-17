@@ -28,6 +28,8 @@ The screen on the prop is real too. Sit down at a computer and the camera goes u
 
 So is the paper. A page waits in the printer's tray, is taken as an item, and opens as a sheet of A4 that can be handed to somebody else and signed.
 
+**And it takes your own apps.** Any resource can put a program of its own on the desktop: a web page in its own window, with an icon on the desktop, taskbar and dock, the desktop's dialogs, notifications and printing, and calls to its own server. Start from the [app templates](https://github.com/Samuels-Development/sd-computers-app-templates), in plain JavaScript, React, Vue or Svelte.
+
 [![Stars](https://img.shields.io/github/stars/Samuels-Development/sd-computers?label=Stars&logo=github)](https://github.com/Samuels-Development/sd-computers)
 [![Discord](https://img.shields.io/discord/842045164951437383?label=Discord&logo=discord&logoColor=white)](https://discord.gg/FzPehMQaBQ)
 [![Documentation](https://img.shields.io/badge/Docs-docs.samueldev.shop-94DD0C)](https://docs.samueldev.shop/resources/computers/)
@@ -35,6 +37,7 @@ So is the paper. A page waits in the printer's tray, is taken as an item, and op
 ![Framework](https://img.shields.io/badge/Framework-QBox%20%7C%20QBCore%20%7C%20ESX-3b82f6)
 ![Target](https://img.shields.io/badge/Target-ox__target%20%7C%20qb--target%20%7C%20qtarget-3b82f6)
 ![Pairs with](https://img.shields.io/badge/Pairs%20with-sd--phone-3b82f6)
+[![Custom apps](https://img.shields.io/badge/Custom%20apps-JS%20%7C%20React%20%7C%20Vue%20%7C%20Svelte-3b82f6)](https://github.com/Samuels-Development/sd-computers-app-templates)
 
 [**Live demo**](https://fivem.samueldev.shop/computer) · [**Documentation**](https://docs.samueldev.shop/resources/computers/) · [**Store**](https://fivem.samueldev.shop) · [**Discord**](https://discord.gg/FzPehMQaBQ)
 
@@ -482,8 +485,30 @@ A computer can be placed as, or picked from the world as, a monitor, a laptop or
 | **Phone Link** | Only with sd-phone: links the character's phone to that machine. It sends a code to the phone as a notification; typing it in puts the phone's apps on the desktop there and then, until they unlink it |
 | **Messages / Notes / Contacts** | Only with sd-phone, once the phone is linked in Phone Link: the phone's texts, notes and address book on the desktop |
 | **Notepad / Calculator / Settings** | Notes that follow the character to every computer; a full standard calculator; wallpaper, accent colour and dark or light mode, saved per character |
+| **Your own apps** | Any resource can add one: a page of its own in a window of its own, on every look. See [Custom apps](#custom-apps), and start from the [app templates](https://github.com/Samuels-Development/sd-computers-app-templates) |
 
 Around the apps: a lock screen with an optional per-computer PIN (checked server-side, with lockout), welcome and shutdown screens, draggable, resizable, snap-to-maximize windows, calendar and quick-settings flyouts, toast notifications, and system sounds for starting up, signing in, windows, clicks and notifications (synthesized, no audio files; each style has its own and can switch them off).
+
+## Custom apps
+
+Your own resource can put a program on the desktop. Register it from your server and it gets an icon, a window, a taskbar or dock entry and a count badge in all three looks; its page talks to your server, your client script and the OS through a small API: the desktop's own dialogs and context menus, notifications, printing to a printer in the room, storage per character or per computer, opening Mail or the Browser, and lines in the Event Viewer. Your endpoints only ever run for a player signed in at a computer that has your app.
+
+```lua
+exports['sd-computers']:AddCustomApp({
+    id = 'wrenchworks',
+    label = 'Wrenchworks',
+    ui = 'wrenchworks/web/index.html',
+    icon = 'wrenchworks/web/icon.svg',
+    groups = { mechanic = 0 },
+    endpoints = {
+        ['orders:list'] = function(source, data, ctx) return { orders = orders } end,
+    },
+})
+```
+
+<p align="center"><img src="docs/previews/custom-apps.webp" width="900" alt="Wrenchworks, the example custom app, with the desktop's context menu and one of its notifications" /></p>
+
+Start from the **[app templates](https://github.com/Samuels-Development/sd-computers-app-templates)**: the same small app in plain JavaScript, React (JS and TS), Vue and Svelte, ready to copy and rename, and Wrenchworks, the full example in the picture above (a garage's work-order book that uses every call). [Custom apps in the docs](https://docs.samueldev.shop/resources/computers/custom-apps).
 
 ## Three looks, one computer
 
@@ -512,27 +537,6 @@ Command Prompt launches ten minigames from sd-deaddrop, with the same server-sid
 ## Printers
 
 A page is not handed to whoever pressed Print: it comes out of a printer in the world and waits in its tray until somebody takes it. A printout is one inventory item, a sheet of A4 that can be read, handed over, stashed and signed by whoever holds it, with the name and time under each signature written by the server. Mail, bank statements and logs are built by the server from its own data, so nobody can print a statement the bank does not agree with. [Printers in the docs](https://docs.samueldev.shop/resources/computers/printers).
-
-## Custom apps
-
-Your own resource can put a program on the desktop. Register it from your server and it gets an icon, a window, a taskbar or dock entry and a count badge in all three looks; its page talks to your server, your client script and the OS through a small API: the desktop's own dialogs and context menus, notifications, printing to a printer in the room, storage per character or per computer, opening Mail or the Browser, and lines in the Event Viewer. Your endpoints only ever run for a player signed in at a computer that has your app.
-
-```lua
-exports['sd-computers']:AddCustomApp({
-    id = 'wrenchworks',
-    label = 'Wrenchworks',
-    ui = 'wrenchworks/web/index.html',
-    icon = 'wrenchworks/web/icon.svg',
-    groups = { mechanic = 0 },
-    endpoints = {
-        ['orders:list'] = function(source, data, ctx) return { orders = orders } end,
-    },
-})
-```
-
-<p align="center"><img src="docs/previews/custom-apps.webp" width="900" alt="Wrenchworks, the example custom app, with the desktop's context menu and one of its notifications" /></p>
-
-Start from the **[app templates](https://github.com/Samuels-Development/sd-computers-app-templates)**: the same small app in plain JavaScript, React (JS and TS), Vue and Svelte, ready to copy and rename, and Wrenchworks, the full example in the picture above (a garage's work-order book that uses every call). [Custom apps in the docs](https://docs.samueldev.shop/resources/computers/custom-apps).
 
 ## Documentation
 
