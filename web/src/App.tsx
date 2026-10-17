@@ -16,6 +16,7 @@ import Computer from './os/Computer';
 import LibHack from './os/LibHack';
 import Paper, { type PaperPage } from './os/Paper';
 import { mockPage } from './nui/mock/print';
+import { useExtEvents } from './apps/ext/events';
 
 /** computers:mail:received (built-in Mail) - also what a phone mail push is reshaped into. */
 interface MailPush {
@@ -57,6 +58,8 @@ function notifyMail(d: MailPush): void {
  *   computers:mirror         somebody nearby is looking at this computer's screen: record for them (src/mirror)
  *   computers:lib:open       StartHack export: a standalone hack.exe window, no desktop needed
  *   computers:paper:open     a printout was used: the page, held up over the game (src/os/Paper.tsx)
+ *   computers:app:*          custom apps: the desktop's lists, badges, open/close, notifications (src/apps/ext/events.ts);
+ *                            computers:app:message goes to the app's own window (src/apps/ext/index.tsx)
  * Browser dev (`npm run dev`): opens itself with the mock payload. URL hashes: #desktop skips
  * boot+lock, #lib opens a standalone hack, #paper a printed page (?kind=text|document|contract|long|mail|statement|logs|faded),
  * #<app> (e.g. #mail) also opens that app.
@@ -129,6 +132,8 @@ export default function App() {
   useNuiEvent<{ conversation: string; seenAt: number }>('computers:phone:seen', d => {
     if (d && useOS.getState().payload?.computer.apps.some(a => a.id === 'messages')) emit('messages:seen', d);
   });
+
+  useExtEvents();
 
   useNuiEvent<HackRun>('computers:lib:open', run => setLib(run));
   useNuiEvent<PaperPage>('computers:paper:open', page => page && setPaper(page));

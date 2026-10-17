@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import type { Win, WinApp } from '@/store/os';
+import { isExt, type ExtAppId } from '@/types';
 import Mail from './mail';
 import EventViewer from './logs';
 import CommandPrompt from './cmd';
@@ -22,6 +23,7 @@ import Mines from './games/Mines';
 import Solitaire from './games/Solitaire';
 import Snake from './games/Snake';
 import HackWindow from './hack/HackWindow';
+import ExtApp from './ext';
 
 /** Props every app component receives: its own window (id, title, size, props...). */
 export interface AppProps {
@@ -36,7 +38,7 @@ export interface AppProps {
  * server installs them, after 'phonelink' has linked the phone where it asks for that); 'boss',
  * 'board' and 'cameras' only for a player they are for.
  */
-export const APPS: Record<WinApp, ComponentType<AppProps>> = {
+export const APPS: Record<Exclude<WinApp, ExtAppId>, ComponentType<AppProps>> = {
   mail: Mail,
   logs: EventViewer,
   cmd: CommandPrompt,
@@ -60,3 +62,6 @@ export const APPS: Record<WinApp, ComponentType<AppProps>> = {
   snake: Snake,
   hack: HackWindow,
 };
+
+/** The component a window draws: its app's, or - for a custom app another resource registered - the frame that holds its page. */
+export const appFor = (app: WinApp): ComponentType<AppProps> => (isExt(app) ? ExtApp : APPS[app]);

@@ -1,5 +1,6 @@
 import type { OpenPayload, OsStyle } from '@/types';
 import { withPhoneLink } from './phonelink';
+import { withExtApps } from './ext';
 
 /** What session.open returns for the MRPD front desk, as a police boss - the browser dev payload. */
 export const mockPayload: OpenPayload = {
@@ -115,11 +116,13 @@ const STYLE_DESKTOP: Record<OsStyle, Partial<OpenPayload['desktop']>> = {
  * it or not as the Phone Link mock has the machine (?phonelink=new: not linked yet).
  */
 export function mockPayloadFor(style: OsStyle): OpenPayload {
-  return withPhoneLink({
-    ...mockPayload,
-    computer: { ...mockPayload.computer, style },
-    desktop: { ...mockPayload.desktop, ...STYLE_DESKTOP[style], style },
-  });
+  return withExtApps(
+    withPhoneLink({
+      ...mockPayload,
+      computer: { ...mockPayload.computer, style },
+      desktop: { ...mockPayload.desktop, ...STYLE_DESKTOP[style], style },
+    }),
+  );
 }
 
 /** The mock PIN for the browser dev payload's requiresPin lock screen. */

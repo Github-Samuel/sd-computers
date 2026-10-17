@@ -24,6 +24,8 @@ local phonemail = require 'server.computers.phonemail'
 local cameras = require 'server.computers.cameras'
 ---@type table The config's computers an admin took away in the panel (server.computers.removed).
 local removed = require 'server.computers.removed'
+---@type table Custom apps other resources registered (server.computers.apps).
+local custom = require 'server.computers.apps'
 
 ---@type table Session module; the table returned at end of file.
 local session = {}
@@ -42,6 +44,7 @@ local session = {}
 ---@field name string character "First Last"
 ---@field openedAt integer os.time() the session opened
 ---@field style string look this session runs in (Desktop.Styles key)
+---@field openApps table<string, boolean>|nil the custom apps whose windows are open (server/computers/appapi.lua)
 
 ---@type table<integer, ComputerSession> Open sessions by player server id.
 local sessions = {}
@@ -59,6 +62,10 @@ local closeHooks = {}
 ---@type fun(src: integer, s: ComputerSession)[] Run when a session starts (mirror.lua lights the
 ---computer's screen for the players around it).
 local openHooks = {}
+
+---@type fun(src: integer, s: ComputerSession)[] Run as a signed-in session goes back to its lock
+---screen, or ends (appapi.lua: the desktop and the custom apps' pages on it are gone).
+local lockHooks = {}
 
 ---@type number Server-side reach: the client's walk-away distance plus slack for latency + desync.
 local REACH = ((config.Interact and config.Interact.MaxDistance) or 2.5) + 2.0
@@ -152,11 +159,12 @@ local function hasBoard(src, def)
 end
 
 ---Ordered app list for the NUI: the computer's configured order, the phone apps after Mail when
----linked, the Company Board and Security Cameras after the rest when this player gets them, and
----the Business Manager slotted in second when they do.
+---linked, the Company Board and Security Cameras after the rest when this player gets them, the
+---Business Manager slotted in second when they do, and the custom apps other resources registered
+---at the end, in the order they were registered.
 ---@param def table computers.lua entry
 ---@param apps table<string, boolean>
----@return table[] list { id, label, w, h }
+---@return table[] list { id, label, w, h, resizable?, ext? }
 local function appList(def, apps)
     local known = config.Desktop.Apps
     local order = {}
@@ -184,19 +192,76 @@ local function appList(def, apps)
         local a = known[id]
         out[#out + 1] = { id = id, label = a.label, w = a.size and a.size.w or 900, h = a.size and a.size.h or 600 }
     end
+    for _, app in ipairs(custom.all()) do
+        if apps[app.osId] then out[#out + 1] = custom.entry(app) end
+    end
     return out
 end
 
----Filter one of the Desktop id lists (Pinned/DesktopIcons) down to the apps this session has.
+---Filter one of the Desktop id lists (Pinned/DesktopIcons) down to the apps this session has,
+---then add the custom apps that asked to be there (`pinned`, `desktop`).
 ---@param list string[]|nil
 ---@param apps table<string, boolean>
+---@param flag 'pinned'|'desktop' which of a custom app's switches puts it on this list
 ---@return string[]
-local function filterIds(list, apps)
+local function filterIds(list, apps, flag)
     local out = {}
     for _, id in ipairs(list or {}) do
         if apps[id] then out[#out + 1] = id end
     end
+    for _, app in ipairs(custom.all()) do
+        if apps[app.osId] and app[flag] then out[#out + 1] = app.osId end
+    end
     return out
+end
+
+---The desktop's lists for a session's apps, as the open payload has them, and the counts on the
+---custom apps' icons.
+---@param src integer
+---@param s ComputerSession
+---@return { apps: table[], pinned: string[], desktopIcons: string[], badges: table<string, integer> }
+local function lists(src, s)
+    local D = config.Desktop
+    return {
+        apps = appList(s.def, s.apps), pinned = filterIds(D.Pinned, s.apps, 'pinned'),
+        desktopIcons = filterIds(D.DesktopIcons, s.apps, 'desktop'), badges = custom.badgesOf(src),
+    }
+end
+
+---What a custom app's code is told about a player at a computer (its check, endpoints, hooks).
+---@param src integer
+---@param s { def: table, instance: string, hostname: string, ip: string, coords: vector3, style: string, citizenid: string, name: string }
+---@return table ctx
+local function context(src, s)
+    return {
+        source = src, citizenid = s.citizenid, name = s.name,
+        computer = {
+            id = s.def.id, label = s.def.label or s.def.id, hostname = s.hostname, ip = s.ip, instance = s.instance,
+            style = s.style, coords = { x = s.coords.x, y = s.coords.y, z = s.coords.z },
+        },
+    }
+end
+
+---@type fun(src: integer, s: ComputerSession)[] Run after a session's custom apps were worked out
+---again (appapi.lua closes the windows of the ones it lost).
+local customHooks = {}
+
+---Put the custom apps a player gets on a session's app set, in place of the ones it had. The new
+---set is worked out first and swapped in at once: an app's check may wait, and an app call made
+---meanwhile must not find its app missing.
+---@param src integer
+---@param s ComputerSession
+local function installCustom(src, s)
+    local now = {}
+    for _, osId in ipairs(custom.forPlayer(src, context(src, s))) do now[osId] = true end
+    for id in pairs(s.apps) do
+        if id:sub(1, #custom.PREFIX) == custom.PREFIX and not now[id] then s.apps[id] = nil end
+    end
+    for id in pairs(now) do s.apps[id] = true end
+    for _, fn in ipairs(customHooks) do
+        local ok, err = pcall(fn, src, s)
+        if not ok then log.error('session', 'custom apps hook failed: %s', tostring(err)) end
+    end
 end
 
 ---The Mail app's domain + compose limits: sd-phone's while its mail is linked, else configs/shared/mail.lua.
@@ -288,6 +353,7 @@ function session.open(src, id, coords, styleOverride)
     }
     sessions[src] = s
     busy[instance] = src
+    installCustom(src, s) -- (after the machine is claimed: an app's check may wait)
     for _, fn in ipairs(openHooks) do
         local ok, err = pcall(fn, src, s)
         if not ok then log.error('session', 'open hook failed: %s', tostring(err)) end
@@ -297,13 +363,14 @@ function session.open(src, id, coords, styleOverride)
     local pins = config.Security and config.Security.Pins or {}
     local D = config.Desktop
     local S = registry.styleDef(style)
+    local desk = lists(src, s)
     return {
         ok = true,
         data = {
             computer = {
                 id = def.id, label = def.label or def.id, hostname = s.hostname, ip = s.ip, instance = instance, style = style,
                 requiresPin = pins[def.id] ~= nil, lockedFor = lockoutLeft(citizenid, def.id),
-                apps = appList(def, apps), pinned = filterIds(D.Pinned, apps), desktopIcons = filterIds(D.DesktopIcons, apps),
+                apps = desk.apps, pinned = desk.pinned, desktopIcons = desk.desktopIcons, badges = desk.badges,
             },
             user = { name = s.name, initials = initials(s.name), job = jobLabel(src) },
             desktop = {
@@ -377,6 +444,10 @@ end
 function session.lock(src)
     local s = sessions[src]
     if not s or not s.signedIn then return end
+    for _, fn in ipairs(lockHooks) do
+        local ok, err = pcall(fn, src, s)
+        if not ok then log.error('session', 'lock hook failed: %s', tostring(err)) end
+    end
     s.signedIn = false
     logs.write(s.instance, {
         level = 'success', source = 'Security', eventId = logs.EVENT.LOGOFF,
@@ -394,6 +465,18 @@ end
 ---@param fn fun(src: integer, s: ComputerSession)
 function session.onOpen(fn)
     openHooks[#openHooks + 1] = fn
+end
+
+---Register a function to run as a signed-in session locks or ends (still signed in while it runs).
+---@param fn fun(src: integer, s: ComputerSession)
+function session.onLock(fn)
+    lockHooks[#lockHooks + 1] = fn
+end
+
+---Register a function to run after a session's custom apps were worked out again.
+---@param fn fun(src: integer, s: ComputerSession)
+function session.onCustomApps(fn)
+    customHooks[#customHooks + 1] = fn
 end
 
 ---End a player's session (shut down / walked away / dropped): log the logoff if they were signed
@@ -448,9 +531,63 @@ function session.refreshPhone(src)
     if not s then return nil end
     for _, id in ipairs(phone.APPS) do s.apps[id] = nil end
     for app in pairs(phone.apps(src, s.def, s.citizenid, s.instance)) do s.apps[app] = true end
-    local D = config.Desktop
-    return { apps = appList(s.def, s.apps), pinned = filterIds(D.Pinned, s.apps), desktopIcons = filterIds(D.DesktopIcons, s.apps) }
+    return lists(src, s)
 end
+
+---The custom apps a session has, as one string to tell two sets apart by.
+---@param s ComputerSession
+---@return string
+local function customKey(s)
+    local ids = {}
+    for id in pairs(s.apps) do
+        if id:sub(1, #custom.PREFIX) == custom.PREFIX then ids[#ids + 1] = id end
+    end
+    table.sort(ids)
+    return table.concat(ids, ',')
+end
+
+---Work out again which custom apps a player gets at the computer they are using (something an
+---app's gates look at changed, or an app was registered, replaced or taken away), and send the
+---desktop its new lists when that changed anything - always, with `force` (a replaced app may have
+---a new label or page). A window of an app that is gone closes.
+---@param src integer
+---@param force? boolean
+---@return boolean sent
+function session.refreshCustom(src, force)
+    local s = sessions[src]
+    if not s then return false end
+    local before = customKey(s)
+    installCustom(src, s)
+    if not force and customKey(s) == before then return false end
+    TriggerClientEvent('sd-computers:client:app', src, 'apps', lists(src, s))
+    return true
+end
+
+---The context a custom app's code is handed for a player at their computer (nil when they have none).
+---@param src integer
+---@return table|nil ctx
+function session.context(src)
+    local s = sessions[src]
+    return s and context(src, s) or nil
+end
+
+---The same context, from a session in hand (one that is ending is no longer looked up by player).
+---@param src integer
+---@param s ComputerSession
+---@return table ctx
+function session.contextOf(src, s)
+    return context(src, s)
+end
+
+-- An app came, went or was replaced: every open desktop is given its lists again. In a thread of
+-- its own: this runs inside the AddCustomApp export, and an app's check may wait on something.
+custom.onChanged(function()
+    CreateThread(function()
+        local open = {}
+        for src in pairs(sessions) do open[#open + 1] = src end
+        for _, src in ipairs(open) do session.refreshCustom(src, true) end
+    end)
+end)
 
 ---Who is sitting at a computer right now (signed in or still at its lock screen), for the admin
 ---panel's "in use" column.

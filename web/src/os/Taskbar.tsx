@@ -6,6 +6,7 @@ import { fmtShortDate, fmtTime, useNow } from '@/lib/format';
 import { t } from '@/i18n';
 import { useExitFx } from '@/hooks/useExitFx';
 import { AppIcon, OsLogo } from './icons';
+import AppBadge from './AppBadge';
 
 interface Item {
   key: string;
@@ -76,6 +77,7 @@ export default function Taskbar() {
           return (
             <TaskButton key={it.key} label={it.label} onClick={() => click(it)} active={isActive} fresh={settled.current}>
               <AppIcon app={it.app} size={24} />
+              <AppBadge app={it.app} />
               <span
                 className="absolute bottom-[3px] left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-200"
                 style={{ width: running ? (isActive ? 16 : 6) : 0, opacity: running ? 1 : 0, background: isActive ? 'var(--accent-fill)' : 'var(--text-3)' }}

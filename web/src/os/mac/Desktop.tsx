@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useOS, selectActiveId, setBoundsProvider } from '@/store/os';
 import type { AppId } from '@/types';
 import { t } from '@/i18n';
-import { APPS } from '@/apps/registry';
+import { appFor } from '@/apps/registry';
 import { Wallpaper } from '../Wallpaper';
 import { macAccentVars } from './accent';
 import { MacIcon } from './MacIcon';
@@ -13,6 +13,7 @@ import Dock from './Dock';
 import SearchOverlay from './Search';
 import Notifications from './Notifications';
 import { DOCK_RESERVE, MENU_H, TITLE_H } from './layout';
+import AppBadge from '../AppBadge';
 
 /**
  * The signed-in Harbor desktop: wallpaper, the icon column down the right edge, every window in
@@ -130,8 +131,9 @@ export default function Desktop() {
                 if (e.key === 'Enter') openApp(a.id);
               }}
             >
-              <span className="mac-desk-tile">
+              <span className="mac-desk-tile relative">
                 <MacIcon app={a.id} size={56} />
+                <AppBadge app={a.id} />
               </span>
               <span className="mac-desk-label">{a.label}</span>
             </button>
@@ -145,7 +147,7 @@ export default function Desktop() {
           onContextMenu={e => e.stopPropagation()}
         >
           {windows.map(w => {
-            const App = APPS[w.app];
+            const App = appFor(w.app);
             return (
               <MacWindow key={w.id} win={w} active={activeId === w.id}>
                 <App win={w} />

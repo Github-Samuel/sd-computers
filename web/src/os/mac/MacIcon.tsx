@@ -1,11 +1,13 @@
 import { useId, type CSSProperties } from 'react';
 import type { WinApp } from '@/store/os';
+import { isExt } from '@/types';
+import ExtIcon from '@/apps/ext/ExtIcon';
 import { AppIcon } from '../icons';
 
 // Harbor's icon language: every app sits on a rounded "squircle" tile with its own gradient, the
 // shared AppIcon art centred on it. Original artwork; the tiles are just colour fields.
 
-const TILES: Record<WinApp | 'system', [string, string]> = {
+const TILES: Record<Exclude<WinApp, `ext:${string}`> | 'system', [string, string]> = {
   mail: ['#ffffff', '#d7e7ff'],
   logs: ['#4a5568', '#1c2330'],
   cmd: ['#f6f6f8', '#c9cad2'],
@@ -36,6 +38,14 @@ const TILES: Record<WinApp | 'system', [string, string]> = {
  * size live while magnifying). The art is sized in CSS (70% of the tile) so it scales with it.
  */
 export function MacIcon({ app, size, className, style }: { app: WinApp | 'system'; size?: number; className?: string; style?: CSSProperties }) {
+  // (a custom app's own picture is the whole tile, as an app's icon is)
+  if (isExt(app)) {
+    return (
+      <span className={`mac-icon ${className ?? ''}`} style={{ width: size ?? '100%', height: size ?? '100%', ...style }}>
+        <ExtIcon app={app} size="100%" look="tile" />
+      </span>
+    );
+  }
   const [a, b] = TILES[app] ?? TILES.system;
   return (
     <span

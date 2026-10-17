@@ -1,5 +1,7 @@
 import { useId, type ReactElement } from 'react';
 import type { WinApp } from '@/store/os';
+import { isExt } from '@/types';
+import ExtIcon from '@/apps/ext/ExtIcon';
 
 // Colourful Fluent-style app icons, drawn as SVG so nothing ships as an image file. Gradient ids go
 // through useId() - the same icon renders many times at once (taskbar, start, desktop, titlebar).
@@ -479,7 +481,7 @@ function SystemIcon({ size = 24 }: IconProps) {
   );
 }
 
-const ICONS: Record<WinApp | 'system', (p: IconProps) => ReactElement> = {
+const ICONS: Record<Exclude<WinApp, `ext:${string}`> | 'system', (p: IconProps) => ReactElement> = {
   mail: MailIcon,
   logs: LogsIcon,
   cmd: CmdIcon,
@@ -507,6 +509,7 @@ const ICONS: Record<WinApp | 'system', (p: IconProps) => ReactElement> = {
 
 /** An app's icon by id (falls back to the generic system icon). */
 export function AppIcon({ app, size = 24 }: { app: WinApp | 'system'; size?: number }) {
+  if (isExt(app)) return <ExtIcon app={app} size={size} look="modern" />;
   const Icon = ICONS[app] ?? SystemIcon;
   return <Icon size={size} />;
 }

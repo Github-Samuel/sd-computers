@@ -100,6 +100,9 @@ export function createPlayer(host: HTMLElement, stage: { w: number; h: number },
       triggerFocus: false,
       pauseAnimation: false, // (a live copy is never "paused": frozen, every fade-in would sit at its first frame)
       UNSAFE_replayCanvas: false,
+      // A custom app's page is another document, which the recording leaves out: what stands in its
+      // place is the app's icon and name, kept hidden on the computer itself (src/apps/ext/index.tsx).
+      insertStyleRules: ['[data-mirror-placeholder] { visibility: visible !important; }'],
     });
     r.on('fullsnapshot-rebuilded', () => {
       boxAll();

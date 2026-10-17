@@ -202,8 +202,12 @@ const play = (cue: Cue): void => {
 export const sfx = {
   /** Signed in. */
   logon: (): void => play('logon'),
-  /** A sign-in refused. */
+  /** A sign-in refused (or a custom app asking for its error sound). */
   error: (): void => play('error'),
+  /** A notification's sound, without a notification (a custom app asked for it). */
+  notify: (): void => play('notify'),
+  /** A press, for something a custom app draws that is not a button of the OS's. */
+  click: (): void => play('click'),
 };
 
 /**

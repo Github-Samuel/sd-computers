@@ -64,11 +64,14 @@ interface OSState {
   flyout: 'calendar' | 'quick' | null;
   toasts: Toast[];
   recent: { app: AppId; at: number }[];
+  /** The counts on custom apps' icons (taskbar, dock, desktop), by desktop id. */
+  badges: Record<string, number>;
 
   bootWith: (p: OpenPayload) => void;
   setPhase: (p: Phase) => void;
   reset: () => void;
-  setApps: (lists: Pick<OpenPayload['computer'], 'apps' | 'pinned' | 'desktopIcons'>) => void;
+  setApps: (lists: Pick<OpenPayload['computer'], 'apps' | 'pinned' | 'desktopIcons' | 'badges'>) => void;
+  setBadge: (app: string, count: number) => void;
   updateSettings: (patch: Partial<Settings>, persist?: boolean) => void;
 
   openApp: (app: AppId, props?: Record<string, unknown>) => void;
@@ -83,6 +86,7 @@ interface OSState {
   resize: (id: string, x: number, y: number, w: number, h: number) => void;
   closeAll: () => void;
   setProps: (id: string, props: Record<string, unknown>) => void;
+  retitle: (id: string, title: string) => void;
 
   setStart: (open: boolean) => void;
   setFlyout: (f: 'calendar' | 'quick' | null) => void;
@@ -156,6 +160,7 @@ export const useOS = create<OSState>((set, get) => ({
   flyout: null,
   toasts: [],
   recent: [],
+  badges: {},
 
   bootWith: p => {
     spawnCount = 0;
@@ -168,6 +173,7 @@ export const useOS = create<OSState>((set, get) => ({
       start: false,
       flyout: null,
       toasts: [],
+      badges: p.computer.badges ?? {},
     });
   },
 
@@ -176,7 +182,7 @@ export const useOS = create<OSState>((set, get) => ({
   reset: () => {
     closeGuards.clear();
     boundsProvider = null;
-    set({ payload: null, phase: 'off', windows: [], start: false, flyout: null, toasts: [] });
+    set({ payload: null, phase: 'off', windows: [], start: false, flyout: null, toasts: [], badges: {} });
   },
 
   // The server has reworked which apps this session has (a phone was linked to the machine, or
@@ -186,13 +192,24 @@ export const useOS = create<OSState>((set, get) => ({
     set(s => {
       if (!s.payload) return s;
       const has = new Set<string>(lists.apps.map(a => a.id));
-      const gone = s.windows.filter(w => w.app !== 'hack' && !has.has(w.app));
+      // (a hack window is Command Prompt's run and stays; a game is the Games shelf's, and goes with it)
+      const owner = (app: WinApp): string => (app === 'mines' || app === 'solitaire' || app === 'snake' ? 'games' : app);
+      const gone = s.windows.filter(w => w.app !== 'hack' && !has.has(owner(w.app)));
       for (const w of gone) closeGuards.delete(w.id);
       return {
         payload: { ...s.payload, computer: { ...s.payload.computer, apps: lists.apps, pinned: lists.pinned, desktopIcons: lists.desktopIcons } },
         windows: gone.length > 0 ? s.windows.filter(w => !gone.includes(w)) : s.windows,
         recent: s.recent.filter(r => has.has(r.app)),
+        badges: lists.badges ?? s.badges,
       };
+    }),
+
+  setBadge: (app, count) =>
+    set(s => {
+      const badges = { ...s.badges };
+      if (count > 0) badges[app] = count;
+      else delete badges[app];
+      return { badges };
     }),
 
   updateSettings: (patch, persist = true) => {
@@ -215,7 +232,7 @@ export const useOS = create<OSState>((set, get) => ({
     }
     const rect = place(def.w, def.h);
     set(s => ({
-      windows: [...s.windows, { id: app, app, title: def.label, ...rect, min: false, max: false, z: ++zCounter, props, resizable: true }],
+      windows: [...s.windows, { id: app, app, title: def.label, ...rect, min: false, max: false, z: ++zCounter, props, resizable: def.resizable !== false }],
     }));
     void rpc('shell:launch', { app });
   },
@@ -278,6 +295,8 @@ export const useOS = create<OSState>((set, get) => ({
   },
 
   setProps: (id, props) => set(s => ({ windows: s.windows.map(w => (w.id === id ? { ...w, props: { ...w.props, ...props } } : w)) })),
+
+  retitle: (id, title) => set(s => ({ windows: s.windows.map(w => (w.id === id && w.title !== title ? { ...w, title } : w)) })),
 
   setStart: open => set({ start: open, flyout: null }),
 

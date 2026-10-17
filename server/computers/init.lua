@@ -47,6 +47,7 @@ require('server.computers.phone').ensureSchema() -- Phone Link: which machines a
 require('server.computers.photos').ensureSchema() -- Photos: the characters' own pictures
 require('server.computers.printing').ensureSchema() -- Printing: the pages, and what waits in which printer's tray
 require('server.computers.printing').load() -- (after the printers: a page whose printer is gone waits nowhere)
+require('server.computers.appdata').ensureSchema() -- Custom apps: what they keep per character and per machine
 
 require 'server.computers.session'
 require 'server.computers.mirror' -- the screen on a computer's prop: which are in use, and the relay to the players watching
@@ -61,6 +62,7 @@ require 'server.computers.contacts' -- Contacts: the phone's address book, over 
 require 'server.computers.bank' -- Bank: the character's balance + statement (read-only)
 require 'server.computers.browser' -- Browser: the sites of configs/shared/browser.lua
 require 'server.computers.web' -- Browser: its live sites, read from sd-phone's public apps over the link
+require 'server.computers.appapi' -- Custom apps: what their pages call, and the exports that register them
 require 'server.admin.panel' -- the /computeradmin panel's verbs: list, place, change, move, remove
 
 ---Retention purge at boot, then every 6 hours.
@@ -90,3 +92,8 @@ local placedCount = 0
 for _ in pairs(placed.all()) do placedCount = placedCount + 1 end
 local total = #registry.all() - removed.count() -- (the ones the admin panel took away are not computers)
 log.info(nil, 'ready - %d computers (%d configured, %d placed)', total, total - placedCount, placedCount)
+
+-- Every export is in place now. Resources that put custom apps on the desktop register on this
+-- (server side): onResourceStart('sd-computers') comes too early, while the database is still
+-- being set up above and the exports below it do not exist yet. Fired again on every restart.
+TriggerEvent('sd-computers:ready')

@@ -560,6 +560,11 @@
     "err_full": "Your pictures are full (%s). Delete one first.",
     "err_have": "That picture is already in your pictures."
   },
+  "apps": {
+    "no_endpoint": "This app has no command called %s.",
+    "storage_full": "This app has no room left to keep that.",
+    "no_print": "This app has nothing to print."
+  },
   "ui": {
     "common": {
       "no_response": "No response from the computer.",
@@ -2849,6 +2854,19 @@
       "sign_confirm": "Sign",
       "sign_empty": "Draw or type a signature first.",
       "sign_failed": "The page could not be signed."
+    },
+    "ext": {
+      "no_ui": "This app has no window of its own.",
+      "busy": "Another dialog is already open.",
+      "bad_call": "That request is missing something it needs.",
+      "unknown_call": "The computer does not know \"%s\".",
+      "unavailable": "This computer cannot do that.",
+      "not_installed": "That app is not on this computer.",
+      "colour_title": "Choose a colour",
+      "colour_custom": "Custom colour",
+      "leave_title": "Close %s?",
+      "leave_body": "Changes you have made may not be saved.",
+      "leave_confirm": "Close anyway"
     }
   }
 }

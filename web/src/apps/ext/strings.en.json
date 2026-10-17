@@ -1,0 +1,13 @@
+{
+  "no_ui": "This app has no window of its own.",
+  "busy": "Another dialog is already open.",
+  "bad_call": "That request is missing something it needs.",
+  "unknown_call": "The computer does not know \"%s\".",
+  "unavailable": "This computer cannot do that.",
+  "not_installed": "That app is not on this computer.",
+  "colour_title": "Choose a colour",
+  "colour_custom": "Custom colour",
+  "leave_title": "Close %s?",
+  "leave_body": "Changes you have made may not be saved.",
+  "leave_confirm": "Close anyway"
+}

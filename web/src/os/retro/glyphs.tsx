@@ -4,6 +4,8 @@
 // between the gradient stops (how a 16-colour card faked a blend).
 import type { ReactElement, ReactNode } from 'react';
 import type { WinApp } from '@/store/os';
+import { isExt } from '@/types';
+import ExtIcon from '@/apps/ext/ExtIcon';
 
 const P = {
   k: '#000000',
@@ -494,7 +496,7 @@ const SystemPx = ({ size = 32 }: IconProps) =>
     size,
   );
 
-const APP_PX: Record<WinApp | 'system', (p: IconProps) => ReactElement> = {
+const APP_PX: Record<Exclude<WinApp, `ext:${string}`> | 'system', (p: IconProps) => ReactElement> = {
   mail: MailPx,
   logs: LogsPx,
   cmd: CmdPx,
@@ -522,6 +524,7 @@ const APP_PX: Record<WinApp | 'system', (p: IconProps) => ReactElement> = {
 
 /** An app's pixel icon (16-grid, so use multiples of 16 for crisp pixels). */
 export function PixelAppIcon({ app, size = 32 }: { app: WinApp | 'system'; size?: number }) {
+  if (isExt(app)) return <ExtIcon app={app} size={size} look="pixel" />;
   const Icon = APP_PX[app] ?? SystemPx;
   return <Icon size={size} />;
 }

@@ -1807,3 +1807,33 @@
     animation-duration: 0.01s;
   }
 }
+
+/* A custom app's context menu (src/apps/ext/Dialogs.tsx MenuBox), as this look's own menus. */
+.os-root[data-style='retro'] .ext-menu {
+  padding: 2px;
+  border-radius: 0;
+  background: var(--face);
+  border: 1px solid #000;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.os-root[data-style='retro'] .ext-menu-item {
+  width: 100%;
+  margin: 0;
+  height: 22px;
+  border-radius: 0;
+  padding: 0 20px 0 22px;
+  color: #000;
+}
+.os-root[data-style='retro'] .ext-menu-item:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+.os-root[data-style='retro'] .ext-menu-sep {
+  height: 0;
+  margin: 3px 1px;
+  background: none;
+  border-top: 1px solid var(--shadow);
+  border-bottom: 1px solid var(--hilite);
+}

@@ -79,7 +79,8 @@ export default function Computer() {
       if (s.phase !== 'desktop') return;
       const now = Date.now();
       const el = document.activeElement as HTMLElement | null;
-      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+      // (a custom app's page is a frame: its SDK marks the frame while a field in it is being typed in)
+      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable || (el.tagName === 'IFRAME' && el.dataset.typing === '1'));
       const hacking = s.windows.find(w => w.id === selectActiveId(s))?.app === 'hack';
       if ((typing || hacking) && now > againUntil) {
         againUntil = now + ESC_AGAIN_MS;

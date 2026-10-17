@@ -3,7 +3,7 @@ import { Paintbrush, RefreshCw, SquareTerminal, Monitor } from 'lucide-react';
 import { useOS, selectActiveId } from '@/store/os';
 import type { AppId } from '@/types';
 import { t } from '@/i18n';
-import { APPS } from '@/apps/registry';
+import { appFor } from '@/apps/registry';
 import { useExitFx } from '@/hooks/useExitFx';
 import { Wallpaper } from './Wallpaper';
 import { AppIcon } from './icons';
@@ -11,6 +11,7 @@ import WindowFrame from './WindowFrame';
 import Taskbar from './Taskbar';
 import StartMenu from './StartMenu';
 import { CalendarFlyout, QuickSettings, Toasts } from './Flyouts';
+import AppBadge from './AppBadge';
 
 /**
  * The signed-in desktop: wallpaper, the icon grid (column-major from the top-left, double-click to
@@ -97,7 +98,10 @@ export default function Desktop() {
                 selected === a.id ? 'bg-white/20 border-white/30' : 'border-transparent hover:bg-white/10'
               }`}
             >
-              <AppIcon app={a.id} size={42} />
+              <span className="relative">
+                <AppIcon app={a.id} size={42} />
+                <AppBadge app={a.id} className="!-top-1 !-right-1.5" />
+              </span>
               <span className="text-[12px] leading-[15px] text-white text-center px-0.5 line-clamp-2" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 0 2px rgba(0,0,0,0.8)' }}>
                 {a.label}
               </span>
@@ -107,7 +111,7 @@ export default function Desktop() {
       </div>
 
       {windows.map(w => {
-        const App = APPS[w.app];
+        const App = appFor(w.app);
         return (
           <WindowFrame key={w.id} win={w} active={activeId === w.id}>
             <App win={w} />

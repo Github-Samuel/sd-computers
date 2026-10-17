@@ -8,7 +8,7 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useOS, selectActiveId, setBoundsProvider, type Win } from '@/store/os';
 import type { AppId } from '@/types';
-import { APPS } from '@/apps/registry';
+import { appFor } from '@/apps/registry';
 import { t } from '@/i18n';
 import { fmtShortDate, fmtTime, useNow } from '@/lib/format';
 import { Wallpaper } from '../Wallpaper';
@@ -377,7 +377,7 @@ const WindowLayer = memo(function WindowLayer() {
         </div>
       )}
       {windows.map(w => {
-        const App = APPS[w.app];
+        const App = appFor(w.app);
         return (
           <RetroWindow key={w.id} win={w} active={activeId === w.id}>
             <App win={w} />

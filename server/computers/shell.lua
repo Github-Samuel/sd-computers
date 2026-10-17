@@ -14,6 +14,8 @@ local registry = require 'server.computers.registry'
 local cameras = require 'server.computers.cameras'
 ---@type table Printing (server.computers.printing): the log can be printed.
 local printing = require 'server.computers.printing'
+---@type table Custom apps (server.computers.apps): their labels, for the launch line.
+local custom = require 'server.computers.apps'
 
 -- The small apps' endpoints: the shell itself (app launches, personalisation), Notepad, Event
 -- Viewer, Command Prompt's system info and Security Cameras. Mail, Business Manager, hacking and
@@ -25,7 +27,8 @@ rpc.register('shell:launch', nil, function(_, s, payload)
     local app = payload.app
     if type(app) ~= 'string' or not s.apps[app] then return rpc.ok() end
     if config.Logs and config.Logs.AppLaunch ~= false then
-        local label = config.Desktop.Apps[app] and config.Desktop.Apps[app].label or app
+        local ext = app:sub(1, #custom.PREFIX) == custom.PREFIX and custom.get(app) or nil
+        local label = ext and ext.label or config.Desktop.Apps[app] and config.Desktop.Apps[app].label or app
         logs.write(s.instance, {
             level = 'information', source = 'Shell', eventId = logs.EVENT.APP_START,
             message = locale('logs.app_start', label, s.name),

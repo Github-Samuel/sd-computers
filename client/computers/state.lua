@@ -22,16 +22,28 @@ local opening = false
 ---@type fun()[] Run as a computer closes, before the camera leaves its screen (the Security
 ---Cameras app hands the display back) - a hook list, so this file never depends on its users.
 local closeHooks = {}
+---@type fun(payload: table)[] Run with the open payload as a computer opens (client/computers/apps.lua
+---learns which custom apps it has).
+local openHooks = {}
 
----Hear about the computer closing, however it does (shut down, walked away, the server, a restart).
----@param fn fun()
+---Hear about a computer opening, with the payload the OS boots from.
+---@param fn fun(payload: table)
+function state.onOpen(fn)
+    openHooks[#openHooks + 1] = fn
+end
+
+---Hear about the computer closing, however it does (shut down, walked away, the server, a restart),
+---with the computer it was ({ id, instance, coords }, nil when none was open).
+---@param fn fun(closing: table|nil)
 function state.onClose(fn)
     closeHooks[#closeHooks + 1] = fn
 end
 
-local function runCloseHooks()
+---@param closing OpenComputer|nil
+local function runCloseHooks(closing)
+    local info = closing and { id = closing.id, instance = closing.instance, coords = closing.coords } or nil
     for _, fn in ipairs(closeHooks) do
-        local ok, err = pcall(fn)
+        local ok, err = pcall(fn, info)
         if not ok then log.error('computer', 'close hook failed: %s', tostring(err)) end
     end
 end
@@ -71,14 +83,22 @@ function state.instance()
     return current and current.instance or nil
 end
 
+---The computer the player is using: { id, instance, coords } (nil when none).
+---@return table|nil
+function state.computer()
+    if not current then return nil end
+    return { id = current.id, instance = current.instance, coords = current.coords }
+end
+
 ---Close the computer: hide the NUI, drop focus, stop the animation and (unless the server asked
 ---for this close) tell the server so the session + logoff are recorded. Idempotent.
 ---@param reason? string notification shown to the player (walked away, lost access, ...)
 ---@param fromServer? boolean true when the server already ended the session
 function state.close(reason, fromServer)
     if not current then return end
+    local closing = current
     current = nil
-    runCloseHooks()
+    runCloseHooks(closing)
     SendNUIMessage({ action = 'computers:close' })
     SetNuiFocus(false, false)
     view.leave()
@@ -138,6 +158,10 @@ function state.open(id, coords, isModel, style, prop)
         res.data.view = rect
         res.data.desktop.monitor = false -- (the prop is the monitor: retro leaves its own chassis off)
     end
+    for _, fn in ipairs(openHooks) do
+        local ok, err = pcall(fn, res.data)
+        if not ok then log.error('computer', 'open hook failed: %s', tostring(err)) end
+    end
     SetNuiFocus(true, true)
     SendNUIMessage({ action = 'computers:open', data = res.data })
     log.debug('computer', 'opened %s', id)
@@ -152,7 +176,7 @@ end)
 
 ---Resource stopping: release focus, the camera and the animation (the NUI dies with the resource).
 function state.shutdown()
-    runCloseHooks()
+    runCloseHooks(current)
     view.shutdown()
     if current then
         SetNuiFocus(false, false)

@@ -283,3 +283,15 @@ code?: { expiresIn, resendIn } (seconds, from when the reply was made), computer
 #### Contacts - app id `contacts` (`contacts.lua`; types: `src/apps/contacts/types.ts`)
 - `contacts:list` {} -> `{ contacts: Contact[] }` (by name); `Contact` = `{ id, name, number (digits), initials?, color?, avatar?, favorite, email?, address? }`
 - `contacts:add` { name, number } -> `Contact` ; `contacts:remove` { number } -> `{ removed }` (every card under that number goes). Both run the phone's own actions, so the phone's rules decide: a number not in service, your own, or one already saved comes back as its error.
+
+### Custom apps (`apps.lua`, `appapi.lua`, `appdata.lua`) - app ids `ext:<id>` (types: `ExtAppDef` in `src/types.ts`)
+Other resources register these on the server (`exports['sd-computers']:AddCustomApp`, reference on the docs site under Custom Apps). They arrive in `payload.computer.apps` like any app, with `ext` = `{ id, resource, ui, icon, color, description, developer, version }` and maybe `resizable: false`; `computer.badges` = `{ [desktop id]: count }`. Every window of one is `src/apps/ext/index.tsx` (`appFor()` in `apps/registry.tsx` routes `ext:` ids there); icons are `src/apps/ext/ExtIcon.tsx`, drawn by `AppIcon`, `MacIcon` and `PixelAppIcon` in their own kind; the count is `src/os/AppBadge.tsx` (taskbar, dock, desktop icons; none in retro).
+- The page is a frame, and everything it asks of the OS is a `postMessage` (`src/apps/ext/protocol.ts`: `hello`, `call`, `typing`, `key` from the page; `init`, `reply`, `event` to it). The SDK the page runs is `public/sdk/sdcomputers.js` (as `window.computer`, types beside it in `sdcomputers.d.ts`), put into the page on load, or loaded by the page itself when it cannot be reached into. A method the page can call is in `METHODS` and in `handle()`; bump `SDK_VERSION` when the surface changes.
+- `app:call` { app, endpoint, data } -> the endpoint's answer (`app` is the id without `ext:`; refused unless the app is on this session's desktop; 15 a second)
+- `app:window` { app, open } -> ok (the app's server `onOpen` / `onClose`; the host sends it on mount and unmount, and `computers:app:window` to client Lua)
+- `app:storage` { app, op: 'get'|'set'|'keys'|'clear', scope?: 'character'|'computer', key?, value?: string|null } -> `{ value }` / ok / `{ keys, limits }`
+- `app:log` { app, message, level?, data? } -> ok ; `app:badge` { app, count } -> `{ count }`
+- Printing: `askPrint(app, { source: 'app', data: { app, title, data, text }, onDone })`; the server's `app` source runs the app's own `print` function.
+- Lua pushes (`src/apps/ext/events.ts`, mounted by App.tsx): `computers:app:apps` (the desktop's lists again), `computers:app:badge`, `computers:app:open` { app, props } (props reach the page as `win.props.launch`), `computers:app:close`, `computers:app:notify`; `computers:app:message` { app, action, data } is heard by that app's window.
+- Browser dev: `src/nui/mock/ext.ts` puts `examples/wrenchworks` on the desktop (its page served by `vite.config.ts` at `/ext/wrenchworks/`) with mock orders; `#ext:wrenchworks` opens it.
+

@@ -26,13 +26,43 @@ export type AppId =
   | 'contacts'
   | 'phonelink'
   | 'browser'
-  | 'games';
+  | 'games'
+  | ExtAppId;
+
+/**
+ * A custom app another resource registered (exports['sd-computers']:AddCustomApp, server/computers/apps.lua):
+ * its id on the desktop is 'ext:' + the id it was registered under. Its window is src/apps/ext.
+ */
+export type ExtAppId = `ext:${string}`;
+
+/** Whether a desktop id is a custom app's. */
+export const isExt = (app: string): app is ExtAppId => app.startsWith('ext:');
+
+/** What the desktop knows about a custom app (server/computers/apps.lua apps.entry). */
+export interface ExtAppDef {
+  /** the id it was registered under (without 'ext:') */
+  id: string;
+  /** the resource that registered it */
+  resource: string;
+  /** the page: https://cfx-nui-<resource>/..., or an http(s) address */
+  ui?: string | null;
+  icon?: string | null;
+  /** '#rrggbb', for the tile behind a missing icon and the mac look's squircle */
+  color?: string | null;
+  description?: string | null;
+  developer?: string | null;
+  version?: string | null;
+}
 
 export interface AppDef {
   id: AppId;
   label: string;
   w: number;
   h: number;
+  /** false = the window keeps its size (custom apps can ask for that) */
+  resizable?: boolean;
+  /** only on a custom app */
+  ext?: ExtAppDef;
 }
 
 export interface WallpaperDef {
@@ -76,6 +106,8 @@ export interface OpenPayload {
     apps: AppDef[];
     pinned: AppId[];
     desktopIcons: AppId[];
+    /** the counts on custom apps' icons, by desktop id (kept per player on the server) */
+    badges?: Record<string, number>;
   };
   user: { name: string; initials: string; job: string };
   desktop: {

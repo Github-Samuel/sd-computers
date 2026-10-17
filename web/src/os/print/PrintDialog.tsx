@@ -24,6 +24,8 @@ export interface PrintJob {
   data: Record<string, unknown>;
   /** What the dialog calls it. */
   title: string;
+  /** Told how it ended: true once the page went to a printer, false when the dialog was put away. */
+  onDone?: (sent: boolean) => void;
 }
 
 interface PrinterRow {
@@ -64,7 +66,16 @@ export function PrintSlot({ app }: { app: WinApp }) {
   const job = useAsked(s => s.jobs[app]);
   // (a window closed with the dialog up does not open on it next time)
   useEffect(() => () => drop(app), [app]);
-  return job ? <PrintDialog job={job} app={app} onClose={() => drop(app)} /> : null;
+  return job ? (
+    <PrintDialog
+      job={job}
+      app={app}
+      onClose={() => {
+        drop(app);
+        job.onDone?.(false);
+      }}
+    />
+  ) : null;
 }
 
 function PrintDialog({ job, app, onClose }: { job: PrintJob; app: WinApp; onClose: () => void }) {
@@ -112,6 +123,7 @@ function PrintDialog({ job, app, onClose }: { job: PrintJob; app: WinApp; onClos
     setBusy(false);
     if (!res.ok || !res.data) return setError(res.error ?? t('ui.common.error'));
     useOS.getState().toast({ app, title: t('ui.print.sent_title', res.data.printer), body: t(res.data.copies === 1 ? 'ui.print.sent_one' : 'ui.print.sent_many', res.data.copies) });
+    job.onDone?.(true);
     onClose();
   }
 

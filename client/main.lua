@@ -16,6 +16,7 @@ require 'client.computers.placed'   -- computers placed or picked from the admin
 require 'client.computers.printers' -- printers stood or picked from the admin panel: their props + the tray option
 require 'client.computers.interact' -- target options on every configured location / prop model
 require 'client.computers.nui'      -- NUI <-> server passthroughs, mail push, hire prompt, alerts
+require 'client.computers.apps'     -- custom apps: the relay to their pages, which are open, their client exports
 require 'client.computers.hacks'    -- StartHack export (standalone hack.exe window)
 require 'client.computers.cameras'  -- the Security Cameras app's picture: the game's view put where a camera is
 require 'client.admin.panel'        -- the /computeradmin panel: NUI glue + placing/moving through the gizmo

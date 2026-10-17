@@ -4,7 +4,7 @@ lua54 'yes'
 
 name 'sd-computers'
 author 'Samuel#0008'
-version '1.0.1'
+version '1.1.0'
 description 'Computers - SD OS, a full desktop for any location or prop: mail, System Logs, Command Prompt hacking and a Business Manager'
 
 shared_scripts {
@@ -46,6 +46,7 @@ files {
     'web/build/assets/*.css',
     'web/build/assets/*.woff2', -- bundled open-licence fonts (Inter, JetBrains Mono)
     'web/build/props/*.jpg', -- what each placeable prop looks like, for the admin panel (web/public/props)
+    'web/build/sdk/*', -- the custom app SDK the desktop puts into an app's page, and its types (web/public/sdk)
 }
 
 -- Framework (qb-core/qbx_core or es_extended), inventory and target (ox_target, qb-target,

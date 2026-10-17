@@ -1,12 +1,34 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
+import { createReadStream, existsSync, statSync } from 'node:fs';
+import { extname, join, resolve, sep } from 'node:path';
+
+const EXAMPLES = fileURLToPath(new URL('../examples', import.meta.url));
+const TYPES: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
+
+// Dev server only: the example custom apps' pages, at /ext/<app>/... from examples/<app>/web/...,
+// so the dev payload's Wrenchworks (src/nui/mock/ext.ts) opens a real page in its window.
+const examples = (): Plugin => ({
+  name: 'sd-computers-examples',
+  apply: 'serve',
+  configureServer(server) {
+    server.middlewares.use('/ext', (req, res, next) => {
+      const m = /^\/([a-z0-9_-]+)\/([^?#]+)/.exec(decodeURIComponent(req.url ?? ''));
+      if (!m) return next();
+      const file = resolve(join(EXAMPLES, m[1], 'web', m[2]));
+      if (!file.startsWith(EXAMPLES + sep) || !existsSync(file) || !statSync(file).isFile()) return next();
+      res.setHeader('Content-Type', TYPES[extname(file)] ?? 'application/octet-stream');
+      createReadStream(file).pipe(res);
+    });
+  },
+});
 
 // Build the desktop into web/build with relative asset paths so the
 // FiveM NUI (nui://sd-computers/web/build/index.html) resolves them. Filenames
 // are unhashed to match the lean fxmanifest files{} globs.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), examples()],
   base: './',
   // '@' -> src, so cross-area imports read `@/i18n` instead of `../../../i18n`.
   resolve: {

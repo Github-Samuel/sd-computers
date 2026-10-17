@@ -701,3 +701,39 @@ body {
   background: #ff4d4d;
   animation: camRec 1.2s steps(2, start) infinite;
 }
+
+/* ── Custom apps ─────────────────────────────────────────────────────────── */
+/* The count on an app's icon (os/AppBadge.tsx): the accent, as the taskbar's own; mac's dock has its red. */
+.app-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent-fill);
+  color: var(--accent-on);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 0 0 1.5px var(--win-bg);
+  z-index: 2;
+}
+.os-root[data-style='mac'] .app-badge {
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 9px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 11px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.os-root[data-style='retro'] .app-badge {
+  display: none;
+}

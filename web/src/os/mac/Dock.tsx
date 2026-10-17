@@ -5,6 +5,7 @@ import { t } from '@/i18n';
 import { MacIcon, MiniWindow } from './MacIcon';
 import { MenuPanel, useDismiss, type MenuEntry } from './Menu';
 import { DOCK_BOTTOM, DOCK_ICON, DOCK_PAD, DOCK_SLAB, setDockElement } from './layout';
+import AppBadge from '../AppBadge';
 
 /** Peak magnification and how far (px from the cursor) it reaches. */
 const MAG = 1.55;
@@ -145,6 +146,7 @@ export default function Dock() {
         <span key={bounce[e.key] ?? 0} className={`mac-dock-tile ${bounce[e.key] ? 'is-bouncing' : ''}`}>
           {e.kind === 'min' ? <MiniWindow app={e.app} dark={dark} /> : <MacIcon app={e.app} />}
         </span>
+        {e.kind === 'app' && <AppBadge app={e.app} />}
         {running && <span className="mac-dock-dot" />}
       </div>
     );
