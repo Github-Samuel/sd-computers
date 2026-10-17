@@ -4,20 +4,32 @@ import { fileURLToPath, URL } from 'node:url';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, resolve, sep } from 'node:path';
 
-const EXAMPLES = fileURLToPath(new URL('../examples', import.meta.url));
 const TYPES: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
 
-// Dev server only: the example custom apps' pages, at /ext/<app>/... from examples/<app>/web/...,
-// so the dev payload's Wrenchworks (src/nui/mock/ext.ts) opens a real page in its window.
-const examples = (): Plugin => ({
-  name: 'sd-computers-examples',
+/**
+ * A checkout of the app templates (github.com/Samuels-Development/sd-computers-app-templates), for
+ * the dev payload's Wrenchworks (src/nui/mock/ext.ts): SD_COMPUTERS_TEMPLATES, or one beside this
+ * repository, as a plain folder or as a FiveM category. null = none, and no Wrenchworks.
+ */
+const TEMPLATES = [
+  process.env.SD_COMPUTERS_TEMPLATES,
+  fileURLToPath(new URL('../../sd-computers-app-templates', import.meta.url)),
+  fileURLToPath(new URL('../../[sd-computers-app-templates]', import.meta.url)),
+].find((dir): dir is string => !!dir && existsSync(join(dir, 'wrenchworks', 'web', 'index.html'))) ?? null;
+
+// Dev server only: the templates' app pages, at /ext/<app>/... from <checkout>/<app>/web/..., so
+// Wrenchworks opens a real page in its window.
+const templates = (): Plugin => ({
+  name: 'sd-computers-app-templates',
   apply: 'serve',
   configureServer(server) {
+    if (!TEMPLATES) return;
+    const root = resolve(TEMPLATES);
     server.middlewares.use('/ext', (req, res, next) => {
       const m = /^\/([a-z0-9_-]+)\/([^?#]+)/.exec(decodeURIComponent(req.url ?? ''));
       if (!m) return next();
-      const file = resolve(join(EXAMPLES, m[1], 'web', m[2]));
-      if (!file.startsWith(EXAMPLES + sep) || !existsSync(file) || !statSync(file).isFile()) return next();
+      const file = resolve(join(root, m[1], 'web', m[2]));
+      if (!file.startsWith(root + sep) || !existsSync(file) || !statSync(file).isFile()) return next();
       res.setHeader('Content-Type', TYPES[extname(file)] ?? 'application/octet-stream');
       createReadStream(file).pipe(res);
     });
@@ -28,7 +40,9 @@ const examples = (): Plugin => ({
 // FiveM NUI (nui://sd-computers/web/build/index.html) resolves them. Filenames
 // are unhashed to match the lean fxmanifest files{} globs.
 export default defineConfig({
-  plugins: [react(), examples()],
+  plugins: [react(), templates()],
+  // (src/nui/mock/ext.ts puts Wrenchworks on the dev desktop only when its page can be served)
+  define: { __SDC_TEMPLATES__: JSON.stringify(TEMPLATES !== null) },
   base: './',
   // '@' -> src, so cross-area imports read `@/i18n` instead of `../../../i18n`.
   resolve: {

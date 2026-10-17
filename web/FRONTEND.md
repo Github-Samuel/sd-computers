@@ -293,5 +293,5 @@ Other resources register these on the server (`exports['sd-computers']:AddCustom
 - `app:log` { app, message, level?, data? } -> ok ; `app:badge` { app, count } -> `{ count }`
 - Printing: `askPrint(app, { source: 'app', data: { app, title, data, text }, onDone })`; the server's `app` source runs the app's own `print` function.
 - Lua pushes (`src/apps/ext/events.ts`, mounted by App.tsx): `computers:app:apps` (the desktop's lists again), `computers:app:badge`, `computers:app:open` { app, props } (props reach the page as `win.props.launch`), `computers:app:close`, `computers:app:notify`; `computers:app:message` { app, action, data } is heard by that app's window.
-- Browser dev: `src/nui/mock/ext.ts` puts `examples/wrenchworks` on the desktop (its page served by `vite.config.ts` at `/ext/wrenchworks/`) with mock orders; `#ext:wrenchworks` opens it.
+- Browser dev: with the app templates (github.com/Samuels-Development/sd-computers-app-templates) checked out beside this repository, or at `SD_COMPUTERS_TEMPLATES`, `src/nui/mock/ext.ts` puts their `wrenchworks` on the desktop (its page served by `vite.config.ts` at `/ext/wrenchworks/`) with mock orders; `#ext:wrenchworks` opens it.
 

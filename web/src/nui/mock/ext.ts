@@ -2,10 +2,14 @@
 import type { AppDef, OpenPayload, RpcResult } from '@/types';
 import type { MockHandler } from './index';
 
-// Custom apps in the browser dev server: the example app (examples/wrenchworks), its page served
-// by vite.config.ts at /ext/wrenchworks/, and a stand-in for its server endpoints and for the
-// custom-app endpoints of server/computers/appapi.lua. Dev server only: a built page has no
-// example to frame.
+// Custom apps in the browser dev server: Wrenchworks, the example app from the app templates
+// (github.com/Samuels-Development/sd-computers-app-templates, checked out beside this repository:
+// vite.config.ts serves its page at /ext/wrenchworks/), and a stand-in for its server endpoints
+// and for the custom-app endpoints of server/computers/appapi.lua. Dev server only: a built page
+// has no example to frame.
+
+/** Whether vite.config.ts found a checkout of the templates to serve Wrenchworks' page from. */
+declare const __SDC_TEMPLATES__: boolean;
 
 const WRENCHWORKS: AppDef = {
   id: 'ext:wrenchworks',
@@ -27,7 +31,7 @@ const WRENCHWORKS: AppDef = {
 
 /** The dev payload with the example app on it (pinned and on the desktop, with a count on its icon). */
 export function withExtApps(p: OpenPayload): OpenPayload {
-  if (!import.meta.env.DEV) return p;
+  if (!import.meta.env.DEV || !__SDC_TEMPLATES__) return p;
   return {
     ...p,
     computer: {
