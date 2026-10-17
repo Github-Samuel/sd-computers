@@ -237,6 +237,9 @@
   font-family: Georgia, 'Times New Roman', serif;
 }
 .paper-letterhead {
+  /* (the name keeps its width: it is the subhead beside it that gives way, and ends in an ellipsis) */
+  flex: 0 0 auto;
+  max-width: 72%;
   font-size: 29px;
   font-weight: 700;
   line-height: 1.1;
