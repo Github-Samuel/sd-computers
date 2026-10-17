@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wrenchworks</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div id="app" class="ww is-loading">
+      <header class="ww-top">
+        <div class="ww-brand">
+          <img class="ww-mark" src="icon.svg" alt="" />
+          <div>
+            <div class="ww-word">WRENCH<span>WORKS</span></div>
+            <div class="ww-shop" id="shop">Shop management</div>
+          </div>
+        </div>
+        <div class="ww-bay" id="bay" hidden>
+          <span class="ww-bay-label">In the bay</span>
+          <span class="ww-bay-car" id="bayCar"></span>
+          <span class="ww-plate" id="bayPlate"></span>
+        </div>
+        <button type="button" class="ww-btn ww-btn-primary" id="newOrder">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+          New work order
+        </button>
+      </header>
+
+      <div class="ww-body">
+        <aside class="ww-side">
+          <nav class="ww-filters" id="filters">
+            <button type="button" data-filter="all">All orders <b data-count="all">0</b></button>
+            <button type="button" data-filter="open">Open <b data-count="open">0</b></button>
+            <button type="button" data-filter="progress">In progress <b data-count="progress">0</b></button>
+            <button type="button" data-filter="done">Done <b data-count="done">0</b></button>
+          </nav>
+
+          <section class="ww-note">
+            <div class="ww-side-head">
+              <h3>Bay note</h3>
+              <span class="ww-hint" id="noteState">On this computer</span>
+            </div>
+            <textarea id="note" maxlength="500" placeholder="Anything the next mechanic at this desk should know."></textarea>
+          </section>
+
+          <section class="ww-prefs">
+            <label class="ww-switch">
+              <input type="checkbox" id="matchTheme" />
+              <span class="ww-switch-track"></span>
+              Match the desktop's theme
+            </label>
+          </section>
+
+          <div class="ww-side-foot">
+            Signed in as <b id="me">-</b>
+            <span id="version"></span>
+          </div>
+        </aside>
+
+        <main class="ww-main">
+          <div class="ww-toolbar">
+            <div class="ww-search">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" /><path d="M10.5 10.5 14 14" /></svg>
+              <input id="search" type="search" placeholder="Search plates, cars, customers" />
+            </div>
+            <span class="ww-hint" id="listCount"></span>
+          </div>
+          <div class="ww-list" id="list"></div>
+          <div class="ww-empty" id="empty" hidden>
+            <img src="icon.svg" alt="" />
+            <b>No work orders here</b>
+            <span>New jobs show up the moment anyone at any computer files one.</span>
+          </div>
+        </main>
+
+        <section class="ww-detail" id="detail" hidden></section>
+      </div>
+
+      <div class="ww-sheet" id="sheet" hidden>
+        <form class="ww-form" id="form" autocomplete="off">
+          <div class="ww-form-head">
+            <h2>New work order</h2>
+            <button type="button" class="ww-btn ww-btn-ghost" id="useBay" disabled>Use the car in the bay</button>
+          </div>
+          <div class="ww-grid">
+            <label>Plate<input name="plate" maxlength="8" placeholder="12ABC345" /></label>
+            <label>Vehicle<input name="model" maxlength="32" placeholder="Sultan RS" /></label>
+            <label>Customer<input name="customer" maxlength="48" placeholder="Walk-in" /></label>
+            <label>Email<input name="contact" maxlength="64" placeholder="customer@lsmail.com" /></label>
+            <label class="ww-wide">Work to be done<textarea name="work" maxlength="600" rows="4" placeholder="Front bumper, respray in candy red, check the brakes."></textarea></label>
+            <label>Quote ($)<input name="quote" type="number" min="0" max="999999" step="1" placeholder="0" /></label>
+            <div class="ww-attach">
+              <span>Photo</span>
+              <div class="ww-attach-row">
+                <button type="button" class="ww-btn ww-btn-ghost" id="formPhoto">Attach from Photos</button>
+                <img id="formPhotoPreview" alt="" hidden />
+              </div>
+            </div>
+          </div>
+          <div class="ww-form-foot">
+            <button type="button" class="ww-btn ww-btn-ghost" id="cancelForm">Cancel</button>
+            <button type="submit" class="ww-btn ww-btn-primary">File work order</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="ww-outside" id="outside" hidden>
+        <img src="icon.svg" alt="" />
+        <b>Wrenchworks runs on SD OS</b>
+        <span>Open it from its icon on a computer.</span>
+      </div>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>

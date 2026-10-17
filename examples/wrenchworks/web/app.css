@@ -1,0 +1,930 @@
+/* Wrenchworks keeps its own look whatever desktop it is opened on - a program, not a page of the
+   OS. It does follow the desktop's light or dark (unless the player turns that off), its accent
+   stays its own orange, and on the retro look it squares off its corners. The SDK puts
+   data-theme / data-style on <html>; .ww carries data-mode, which the script sets from them. */
+
+/* The page's own background goes on #app, never on html/body: a background there paints the whole
+   canvas, and a resource whose page is also its ui_page would cover the game with it. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+}
+
+.ww {
+  --orange: #f2711c;
+  --orange-hi: #ff8b3d;
+  --orange-ink: #ffffff;
+  --radius: 8px;
+  --radius-sm: 5px;
+  --head: Bahnschrift, 'DIN Alternate', 'Arial Narrow', Arial, sans-serif;
+  --body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* dark */
+  --bg: #14161a;
+  --panel: #1b1e23;
+  --panel-2: #22262d;
+  --raise: #2a2f37;
+  --line: #2f343d;
+  --text: #eceef2;
+  --muted: #98a1af;
+  --faint: #6b7380;
+  --amber: #f6b73c;
+  --blue: #5aa9ff;
+  --green: #43d18f;
+  --red: #ff5c61;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.4 var(--body);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ww[data-mode='light'] {
+  --bg: #f3f0ea;
+  --panel: #ffffff;
+  --panel-2: #f8f6f1;
+  --raise: #efebe3;
+  --line: #e2ddd3;
+  --text: #1c1f24;
+  --muted: #646b76;
+  --faint: #9299a3;
+  --amber: #b97700;
+  --blue: #1f6fd6;
+  --green: #118a54;
+  --red: #d33a3f;
+  --orange: #e2600c;
+  --shadow: 0 10px 30px rgba(60, 40, 10, 0.16);
+}
+
+html[data-style='mac'] .ww {
+  --radius: 10px;
+  --radius-sm: 7px;
+}
+
+html[data-style='retro'] .ww {
+  --radius: 0;
+  --radius-sm: 0;
+  --head: Tahoma, 'MS Sans Serif', Arial, sans-serif;
+  --body: Tahoma, 'MS Sans Serif', Arial, sans-serif;
+  --shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.ww.is-unfocused .ww-top {
+  filter: saturate(0.55);
+}
+
+.ww [hidden] {
+  display: none !important;
+}
+
+.ww svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* ── Top bar ───────────────────────────────────────────────────────────── */
+
+.ww-top {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 18px;
+  background: linear-gradient(180deg, #1f232a, #181b20);
+  border-bottom: 3px solid var(--orange);
+  color: #eceef2;
+  transition: filter 0.2s;
+}
+
+.ww-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-right: auto;
+  min-width: 0;
+}
+
+.ww-mark {
+  width: 38px;
+  height: 38px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.ww-word {
+  font: 700 21px/1 var(--head);
+  font-stretch: condensed;
+  letter-spacing: 0.06em;
+}
+
+.ww-word span {
+  color: var(--orange-hi);
+}
+
+.ww-shop {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: #9aa3b0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ww-bay {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px 6px 12px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  animation: ww-in 0.25s ease-out;
+}
+
+.ww-bay-label {
+  font: 700 10px/1 var(--head);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--orange-hi);
+}
+
+.ww-bay-car {
+  font-weight: 600;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────── */
+
+.ww-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font: 600 13px/1 var(--body);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.ww-btn:active {
+  transform: translateY(1px);
+}
+
+.ww-btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.ww-btn-primary {
+  background: var(--orange);
+  color: var(--orange-ink);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+.ww-btn-primary:hover {
+  background: var(--orange-hi);
+}
+
+.ww-btn-ghost {
+  background: var(--panel-2);
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.ww-btn-ghost:hover {
+  background: var(--raise);
+}
+
+.ww-btn-danger {
+  background: transparent;
+  color: var(--red);
+  border-color: rgba(255, 92, 97, 0.4);
+}
+
+.ww-btn-danger:hover {
+  background: rgba(255, 92, 97, 0.12);
+}
+
+.ww-btn-sm {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+html[data-style='retro'] .ww-btn {
+  box-shadow: inset -1px -1px 0 rgba(0, 0, 0, 0.45), inset 1px 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+
+.ww-body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.ww-side {
+  width: 232px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 12px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+}
+
+.ww-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ww-filters button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  padding: 0 10px 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font: 600 13px/1 var(--body);
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+}
+
+.ww-filters button:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.ww-filters button.is-on {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.ww-filters button.is-on::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--orange);
+}
+
+.ww-filters b {
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--raise);
+  color: var(--text);
+  font-size: 11px;
+  text-align: center;
+}
+
+.ww-side-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.ww-side h3 {
+  margin: 0;
+  font: 700 11px/1 var(--head);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ww-hint {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.ww-note textarea {
+  box-sizing: border-box;
+  width: 100%;
+  height: 120px;
+  resize: none;
+  padding: 10px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: #fff5c8;
+  color: #3b3317;
+  font: 13px/1.45 'Segoe Print', 'Comic Sans MS', var(--body);
+  box-shadow: inset 0 -16px 22px -20px rgba(120, 90, 0, 0.35);
+  outline: none;
+}
+
+.ww-note textarea:focus {
+  border-color: var(--amber);
+}
+
+.ww-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ww-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ww-switch-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--raise);
+  border: 1px solid var(--line);
+  transition: background 0.15s;
+}
+
+.ww-switch-track::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.18s, background 0.15s;
+}
+
+.ww-switch input:checked + .ww-switch-track {
+  background: var(--orange);
+  border-color: var(--orange);
+}
+
+.ww-switch input:checked + .ww-switch-track::after {
+  transform: translateX(14px);
+  background: #fff;
+}
+
+.ww-side-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+.ww-side-foot b {
+  color: var(--muted);
+}
+
+/* ── The list ──────────────────────────────────────────────────────────── */
+
+.ww-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ww-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ww-search {
+  flex: 1;
+  max-width: 380px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--faint);
+}
+
+.ww-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: 13px var(--body);
+}
+
+.ww-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px 16px;
+}
+
+.ww-row {
+  display: grid;
+  grid-template-columns: 4px 40px 100px minmax(0, 1fr) auto 76px 60px;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 0 12px 0 0;
+  margin-bottom: 6px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  overflow: hidden;
+  animation: ww-in 0.2s ease-out both;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+/* (rows deal themselves in when the list first draws, not on every redraw after) */
+.ww-list.is-settled .ww-row {
+  animation: none;
+}
+
+/* With an order open beside the list, the row gives up its age. */
+.has-detail .ww-row {
+  grid-template-columns: 4px 38px 96px minmax(0, 1fr) auto 72px;
+}
+
+.has-detail .ww-age {
+  display: none;
+}
+
+.ww-row:hover {
+  border-color: var(--faint);
+}
+
+.ww-row.is-selected {
+  border-color: var(--orange);
+  background: var(--panel-2);
+}
+
+.ww-stripe {
+  align-self: stretch;
+  background: var(--line);
+}
+
+.ww-id {
+  font: 700 13px/1 var(--head);
+  color: var(--faint);
+}
+
+.ww-who {
+  min-width: 0;
+}
+
+.ww-who b {
+  display: block;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ww-who span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ww-quote {
+  font: 700 14px/1 var(--head);
+  text-align: right;
+}
+
+.ww-age {
+  font-size: 11.5px;
+  color: var(--faint);
+  text-align: right;
+}
+
+/* San Andreas plates: white, blue lettering, the state's name on top. */
+.ww-plate {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 86px;
+  height: 30px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #ffffff, #e9ecef);
+  border: 1px solid #b9bfc6;
+  color: #1c3d94;
+  font: 700 14px/1 var(--head);
+  letter-spacing: 0.08em;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.ww-plate::before {
+  content: 'San Andreas';
+  font: italic 600 7px/1 Georgia, serif;
+  letter-spacing: 0.02em;
+  color: #c0392b;
+  margin-bottom: 2px;
+}
+
+.ww-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 11px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ww-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ww-pill.is-open {
+  color: var(--amber);
+  background: rgba(246, 183, 60, 0.14);
+}
+
+.ww-pill.is-progress {
+  color: var(--blue);
+  background: rgba(90, 169, 255, 0.14);
+}
+
+.ww-pill.is-done {
+  color: var(--green);
+  background: rgba(67, 209, 143, 0.14);
+}
+
+.ww-empty,
+.ww-outside {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.ww-empty img,
+.ww-outside img {
+  width: 54px;
+  height: 54px;
+  margin-bottom: 8px;
+  opacity: 0.85;
+}
+
+.ww-empty b,
+.ww-outside b {
+  color: var(--text);
+  font: 700 17px/1.2 var(--head);
+}
+
+.ww-outside {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  z-index: 30;
+}
+
+/* ── The order ─────────────────────────────────────────────────────────── */
+
+.ww-detail {
+  width: 330px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  overflow-y: auto;
+  animation: ww-slide 0.22s ease-out;
+}
+
+.ww-detail-head {
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid var(--line);
+  border-top: 4px solid var(--line);
+}
+
+.ww-detail-head h2 {
+  margin: 10px 0 2px;
+  font: 700 20px/1.15 var(--head);
+}
+
+.ww-detail-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.ww-detail-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ww-detail-top .ww-pill {
+  margin-left: auto;
+}
+
+.ww-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.ww-x:hover {
+  background: var(--raise);
+  color: var(--text);
+}
+
+.ww-photo {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 14px 16px 0;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.ww-facts {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 8px 10px;
+  margin: 0;
+  padding: 14px 16px;
+}
+
+.ww-facts dt {
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.ww-facts dd {
+  margin: 0;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.ww-work {
+  margin: 0 16px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-2);
+  border: 1px dashed var(--line);
+  white-space: pre-wrap;
+}
+
+.ww-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px;
+  margin-top: auto;
+}
+
+.ww-actions .ww-btn-primary {
+  flex: 1 1 100%;
+  justify-content: center;
+}
+
+/* ── New order ─────────────────────────────────────────────────────────── */
+
+.ww-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 9, 11, 0.55);
+  animation: ww-fade 0.15s ease-out;
+}
+
+.ww-form {
+  width: min(620px, calc(100% - 40px));
+  max-height: calc(100% - 40px);
+  overflow-y: auto;
+  border-radius: calc(var(--radius) + 2px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--orange);
+  box-shadow: var(--shadow);
+  animation: ww-rise 0.2s ease-out;
+}
+
+.ww-form-head,
+.ww-form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 20px;
+}
+
+.ww-form-foot {
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+  background: var(--panel-2);
+}
+
+.ww-form h2 {
+  margin: 0;
+  font: 700 19px/1 var(--head);
+}
+
+.ww-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+  padding: 0 20px 18px;
+}
+
+.ww-grid label,
+.ww-attach {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ww-wide {
+  grid-column: 1 / -1;
+}
+
+.ww-grid input,
+.ww-grid textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  font: 400 13px/1.4 var(--body);
+  letter-spacing: 0;
+  text-transform: none;
+  outline: none;
+  resize: none;
+}
+
+.ww-grid input:focus,
+.ww-grid textarea:focus {
+  border-color: var(--orange);
+}
+
+.ww-grid input[name='plate'] {
+  font: 700 15px/1.2 var(--head);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #1c3d94;
+  background: linear-gradient(180deg, #ffffff, #eef0f2);
+}
+
+.ww-attach-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ww-attach-row img {
+  width: 54px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+/* ── Motion ────────────────────────────────────────────────────────────── */
+
+@keyframes ww-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes ww-slide {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes ww-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ww-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+html[data-style='retro'] .ww *,
+html[data-style='retro'] .ww *::before,
+html[data-style='retro'] .ww *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+.ww ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.ww ::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background: var(--line) padding-box;
+}
+
+/* Narrower windows: an open order takes the sidebar's room, and in the narrowest it slides over the list. */
+@media (max-width: 1080px) {
+  .has-detail .ww-side {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .ww-side {
+    width: 190px;
+  }
+  .has-detail .ww-side {
+    display: flex;
+  }
+  .ww-detail {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    box-shadow: var(--shadow);
+  }
+  .ww-row,
+  .has-detail .ww-row {
+    grid-template-columns: 4px 38px 96px minmax(0, 1fr) auto 72px;
+  }
+  .ww-age,
+  .has-detail .ww-age {
+    display: none;
+  }
+  .ww-bay-car {
+    display: none;
+  }
+}
