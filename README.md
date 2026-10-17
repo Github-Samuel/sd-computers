@@ -513,6 +513,27 @@ Command Prompt launches ten minigames from sd-deaddrop, with the same server-sid
 
 A page is not handed to whoever pressed Print: it comes out of a printer in the world and waits in its tray until somebody takes it. A printout is one inventory item, a sheet of A4 that can be read, handed over, stashed and signed by whoever holds it, with the name and time under each signature written by the server. Mail, bank statements and logs are built by the server from its own data, so nobody can print a statement the bank does not agree with. [Printers in the docs](https://docs.samueldev.shop/resources/computers/printers).
 
+## Custom apps
+
+Your own resource can put a program on the desktop. Register it from your server and it gets an icon, a window, a taskbar or dock entry and a count badge in all three looks; its page talks to your server, your client script and the OS through a small API: the desktop's own dialogs and context menus, notifications, printing to a printer in the room, storage per character or per computer, opening Mail or the Browser, and lines in the Event Viewer. Your endpoints only ever run for a player signed in at a computer that has your app.
+
+```lua
+exports['sd-computers']:AddCustomApp({
+    id = 'wrenchworks',
+    label = 'Wrenchworks',
+    ui = 'wrenchworks/web/index.html',
+    icon = 'wrenchworks/web/icon.svg',
+    groups = { mechanic = 0 },
+    endpoints = {
+        ['orders:list'] = function(source, data, ctx) return { orders = orders } end,
+    },
+})
+```
+
+<p align="center"><img src="docs/previews/custom-apps.webp" width="900" alt="Wrenchworks, the example custom app, with the desktop's context menu and one of its notifications" /></p>
+
+`examples/wrenchworks` is a complete one, a garage's work-order book in plain HTML and JavaScript that uses every call: copy it, rename it, keep what you need. [Custom apps in the docs](https://docs.samueldev.shop/resources/computers/custom-apps).
+
 ## Documentation
 
 Everything else is on the docs site, **[docs.samueldev.shop/resources/computers](https://docs.samueldev.shop/resources/computers/)**:
@@ -529,6 +550,7 @@ Everything else is on the docs site, **[docs.samueldev.shop/resources/computers]
 | [Browser Sites](https://docs.samueldev.shop/resources/computers/browser) | sd-phone's sites live, pages written in the config, your own web pages |
 | [sd-phone Link](https://docs.samueldev.shop/resources/computers/phone-link) | What changes with sd-phone, and linking a phone to a machine |
 | [Security](https://docs.samueldev.shop/resources/computers/security) | How the server keeps a modified client from doing what a player at the desk could not |
+| [Custom Apps](https://docs.samueldev.shop/resources/computers/custom-apps) | Your own programs on the desktop: registering one, the page's API, endpoints, printing, storage, the example app |
 | [Client Exports](https://docs.samueldev.shop/resources/computers/exports-client) / [Server Exports](https://docs.samueldev.shop/resources/computers/exports-server) | Opening computers from other scripts, verified hacks, System Logs, mail, printing your own pages, the breach event |
 
 ## Compatibility
@@ -579,4 +601,4 @@ npm run build
 
 A source ZIP unpacks to `sd-computers-main`: rename the folder to `sd-computers`, the name its exports are called by. After changing the UI, run `npm run build` again; the game loads `web/build`, not the source.
 
-`npm run dev` opens the whole OS in a browser with mock data (dev PIN `1031`). Hashes: `#desktop` skips the lock screen, `#mail` / `#boss` / `#logs` / `#cmd` and so on open an app, `#lib` shows a standalone StartHack window, and `?style=retro` or `?style=mac` switches the look. `?frame=0.2,0.1,0.6,0.78` (left, top, width, height as fractions of the window) lays the desktop out as it sits on a prop's screen. The admin panel is a page of its own: `http://localhost:<port>/admin.html` shows it with mock computers (placing "runs the gizmo" by hiding the panel for a moment). So is a prop's screen: `/screen.html?mode=idle&style=retro` is a lock face, and `/screen.html?mode=live` in a second tab shows a live copy of the OS running in the first. App contracts and UI conventions are in `web/FRONTEND.md`.
+`npm run dev` opens the whole OS in a browser with mock data (dev PIN `1031`). Hashes: `#desktop` skips the lock screen, `#mail` / `#boss` / `#logs` / `#cmd` and so on open an app (`#ext:wrenchworks` opens the example custom app), `#lib` shows a standalone StartHack window, and `?style=retro` or `?style=mac` switches the look. `?frame=0.2,0.1,0.6,0.78` (left, top, width, height as fractions of the window) lays the desktop out as it sits on a prop's screen. The admin panel is a page of its own: `http://localhost:<port>/admin.html` shows it with mock computers (placing "runs the gizmo" by hiding the panel for a moment). So is a prop's screen: `/screen.html?mode=idle&style=retro` is a lock face, and `/screen.html?mode=live` in a second tab shows a live copy of the OS running in the first. App contracts and UI conventions are in `web/FRONTEND.md`.
