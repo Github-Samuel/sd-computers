@@ -10,9 +10,11 @@ import { DEV_CHANNEL, pack, type Batch } from './codec';
 // module is loaded only then.
 //
 // Never recorded: what is typed into a password field (rrweb masks it at the source), anything
-// under an element marked `mirror-block` (a StartHack window), and anything outside this document
-// (the /computeradmin panel is another frame of the page that holds this one, src/host - and
-// should a frame ever be put INSIDE the OS, foreign() keeps what is in it out too).
+// under an element marked `mirror-block` (a StartHack window, or what a custom app's page marks),
+// and anything outside this document but a custom app's page (the /computeradmin panel is another
+// frame of the page that holds this one, src/host; the Browser's sites are frames in the OS -
+// foreign() keeps what is in those out). A custom app's page is in a frame marked
+// data-mirror-frame (src/apps/ext), and goes into the recording with the OS around it.
 
 /** rrweb's event types and sources (the ones looked at here). */
 const FULL_SNAPSHOT = 2;
@@ -27,6 +29,8 @@ const SNAPSHOT_GAP_MS = 1500;
 /** Minigame canvases are sent no wider than this (px). */
 const CANVAS_MAX_W = 480;
 const CANVAS_QUALITY = 0.45;
+/** The frames whose page is recorded with the OS: custom apps' (src/apps/ext). */
+const SHARED_FRAME = 'iframe[data-mirror-frame]';
 
 const channel = isEnvBrowser() && typeof BroadcastChannel === 'function' ? new BroadcastChannel(DEV_CHANNEL) : null;
 
@@ -40,16 +44,34 @@ let canvasTimer: number | undefined;
 let lastSnapshot = 0;
 let lastSize = 0;
 let frames = new WeakMap<HTMLCanvasElement, string>();
+/** Documents looked up as the page of a shared frame (true) or not (false), so each is looked up once. */
+let shared = new WeakMap<Document, boolean>();
 
 const isInput = (e: eventWithTime): boolean => e.type === INCREMENTAL && (e.data as { source?: number }).source === INPUT;
 
 type NodeRef = { id?: number; parentId?: number };
 
+/** The pages in this document's shared frames. */
+const sharedPages = (): Document[] =>
+  Array.from(document.querySelectorAll<HTMLIFrameElement>(SHARED_FRAME), f => f.contentDocument).filter(
+    (doc): doc is Document => doc !== null,
+  );
+
+/** Whether a document is the page in one of this document's shared frames. */
+function isShared(doc: Document): boolean {
+  let yes = shared.get(doc);
+  if (yes === undefined) {
+    yes = sharedPages().includes(doc);
+    shared.set(doc, yes);
+  }
+  return yes;
+}
+
 /**
- * Whether an event is about another document than this one. rrweb follows into every frame it can
- * read, and marking a frame `mirror-block` hides its attributes, not what is inside it. Only this
- * document is ever sent: the event that would attach a frame's contents is dropped, and so is
- * everything that happens in one.
+ * Whether an event is about another document than this one and a shared frame's page. rrweb
+ * follows into every frame it can read, and marking a frame `mirror-block` hides its attributes,
+ * not what is inside it. So the event that would attach a frame's contents is dropped, and so is
+ * everything that happens in one - unless the frame is one of this document's shared frames.
  */
 function foreign(e: eventWithTime): boolean {
   if (e.type !== INCREMENTAL) return false;
@@ -62,11 +84,17 @@ function foreign(e: eventWithTime): boolean {
     attributes?: NodeRef[];
     positions?: NodeRef[];
   };
-  if (d.isAttachIframe) return true;
+  if (d.isAttachIframe) {
+    const frame = record.mirror.getNode(d.adds?.[0]?.parentId ?? -1);
+    return !(frame instanceof HTMLIFrameElement && frame.ownerDocument === document && frame.matches(SHARED_FRAME));
+  }
   const id = d.id ?? d.adds?.[0]?.parentId ?? d.removes?.[0]?.parentId ?? d.texts?.[0]?.id ?? d.attributes?.[0]?.id ?? d.positions?.[0]?.id;
   if (typeof id !== 'number') return false;
   const node = record.mirror.getNode(id);
-  return node !== null && node !== document && node.ownerDocument !== document;
+  if (node === null || node === document) return false;
+  // (a frame's document is its own node, with no owner)
+  const doc = node.nodeType === Node.DOCUMENT_NODE ? (node as Document) : node.ownerDocument;
+  return doc !== document && (doc === null || !isShared(doc));
 }
 
 /** A field typed into reports its whole value on every keystroke: only the last one in a batch matters. */
@@ -112,6 +140,7 @@ function emit(event: eventWithTime): void {
   if (event.type === FULL_SNAPSHOT) {
     lastSnapshot = Date.now();
     frames = new WeakMap(); // (whoever starts from this snapshot has no canvas frames yet)
+    shared = new WeakMap(); // (an app re-registered meanwhile may have left the copy)
     flush();
     return;
   }
@@ -134,11 +163,14 @@ function snapshot(): void {
 
 /**
  * The minigames draw on a canvas, which a DOM recording does not see: send what they show as small
- * images. Not a canvas marked data-mirror-skip - a security camera's picture is the watching
- * player's own game view (src/apps/cameras/GameView.tsx), and far too much to send three times a second.
+ * images - and what the canvases in a custom app's page show. Not a canvas marked data-mirror-skip -
+ * a security camera's picture is the watching player's own game view (src/apps/cameras/GameView.tsx),
+ * and far too much to send three times a second.
  */
 function sampleCanvases(scratch: HTMLCanvasElement): void {
-  document.querySelectorAll<HTMLCanvasElement>('.os-root canvas:not([data-mirror-skip])').forEach(canvas => {
+  const canvases = Array.from(document.querySelectorAll<HTMLCanvasElement>('.os-root canvas:not([data-mirror-skip])'));
+  for (const page of sharedPages()) canvases.push(...page.querySelectorAll<HTMLCanvasElement>('canvas:not([data-mirror-skip])'));
+  canvases.forEach(canvas => {
     if (!canvas.width || !canvas.height) return;
     const id = record.mirror.getId(canvas);
     if (id <= 0) return;
@@ -147,8 +179,13 @@ function sampleCanvases(scratch: HTMLCanvasElement): void {
     scratch.height = Math.round(canvas.height * scale);
     const ctx = scratch.getContext('2d');
     if (!ctx) return;
-    ctx.drawImage(canvas, 0, 0, scratch.width, scratch.height);
-    const url = scratch.toDataURL('image/webp', CANVAS_QUALITY);
+    let url: string;
+    try {
+      ctx.drawImage(canvas, 0, 0, scratch.width, scratch.height);
+      url = scratch.toDataURL('image/webp', CANVAS_QUALITY);
+    } catch {
+      return; // (an app's canvas with a picture from another origin on it cannot be read)
+    }
     if (frames.get(canvas) === url) return;
     frames.set(canvas, url);
     record.addCustomEvent('canvas', { id, url });

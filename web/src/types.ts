@@ -52,6 +52,8 @@ export interface ExtAppDef {
   description?: string | null;
   developer?: string | null;
   version?: string | null;
+  /** false = players watching this computer's screen see the app's icon and name, not its page */
+  mirror?: boolean;
 }
 
 export interface AppDef {

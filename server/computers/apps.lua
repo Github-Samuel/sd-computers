@@ -43,6 +43,7 @@ apps.PREFIX = 'ext:'
 ---@field w integer
 ---@field h integer
 ---@field resizable boolean
+---@field mirror boolean its page is part of the copy of the screen players nearby see
 ---@field desktop boolean an icon on the desktop
 ---@field pinned boolean on the taskbar / dock
 ---@field computers table<string, boolean>|nil the computers it is on (nil = every one)
@@ -219,7 +220,7 @@ local function read(d, resource)
         ui = ui, icon = icon, color = color,
         description = line(d.description, 200), developer = line(d.developer, MAX_LABEL), version = line(d.version, 16),
         w = math.max(320, math.min(1600, w)), h = math.max(200, math.min(1000, h)),
-        resizable = d.resizable ~= false, desktop = d.desktop ~= false, pinned = d.pinned == true,
+        resizable = d.resizable ~= false, mirror = d.mirror ~= false, desktop = d.desktop ~= false, pinned = d.pinned == true,
         computers = set(d.computers), styles = styles, groups = groupsOf(d.groups), items = strings(d.items or d.item),
         check = d.check, onOpen = d.onOpen, onClose = d.onClose, print = d.print,
         endpoints = endpoints,
@@ -365,6 +366,7 @@ function apps.entry(app)
         ext = {
             id = app.id, resource = app.resource, ui = app.ui, icon = app.icon, color = app.color,
             description = app.description, developer = app.developer, version = app.version,
+            mirror = app.mirror,
         },
     }
 end

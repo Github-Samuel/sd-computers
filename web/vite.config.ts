@@ -36,11 +36,41 @@ const templates = (): Plugin => ({
   },
 });
 
+/**
+ * The recorder (src/mirror/recorder.ts) takes in a custom app's page: rrweb watches a frame's
+ * document from when it attaches it to the recording - and attaches it again on every whole-screen
+ * snapshot (one per player who starts watching), each time adding a full set of watchers and never
+ * taking the last set away. Every change in the page would then be sent once per snapshot taken
+ * since the recording began, and a stylesheet rule inserted once would be inserted that many times
+ * on the screens. This has it watch each document once per recording. It refuses to build an rrweb
+ * whose code no longer reads as it did (2.1.7).
+ */
+const rrwebFramesOnce = (): Plugin => ({
+  name: 'sd-computers-rrweb-frames-once',
+  transform(code, id) {
+    if (!/[\\/]@rrweb[\\/]record[\\/]dist[\\/]record\.js$/.test(id.split('?')[0])) return;
+    const listen = 'iframeManager.addLoadListener((iframeEl) => {';
+    const watch = 'handlers.push(observe(iframeEl.contentDocument));';
+    if (code.split(listen).length !== 2 || code.split(watch).length !== 2) {
+      throw new Error('@rrweb/record changed: check vite.config.ts rrwebFramesOnce against it before building');
+    }
+    const once = [
+      'if (!watchedDocs.has(iframeEl.contentDocument)) {',
+      'watchedDocs.add(iframeEl.contentDocument);',
+      watch,
+      '}',
+    ].join(' ');
+    return code.replace(listen, `const watchedDocs = new WeakSet();\n    ${listen}`).replace(watch, once);
+  },
+});
+
 // Build the desktop into web/build with relative asset paths so the
 // FiveM NUI (nui://sd-computers/web/build/index.html) resolves them. Filenames
 // are unhashed to match the lean fxmanifest files{} globs.
 export default defineConfig({
-  plugins: [react(), templates()],
+  plugins: [react(), templates(), rrwebFramesOnce()],
+  // (served as it is in dev, so rrwebFramesOnce reaches it there too: it imports nothing)
+  optimizeDeps: { exclude: ['@rrweb/record'] },
   // (src/nui/mock/ext.ts puts Wrenchworks on the dev desktop only when its page can be served)
   define: { __SDC_TEMPLATES__: JSON.stringify(TEMPLATES !== null) },
   base: './',

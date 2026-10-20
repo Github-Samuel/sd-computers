@@ -29,9 +29,11 @@ import { METHODS, SDK_VERSION, isFromPage, type InitData, type PageEvent, type P
 //  - Keys pressed in the page stay in the page. The SDK passes on an Escape the page did not use
 //    (so it still stands the player up), and says when a field in the page is being typed in (so
 //    Escape asks twice, as it does over the OS's own fields - src/os/Computer.tsx).
-//  - The copy of the screen other players see (src/mirror) never contains another document: they
-//    see the app's icon and name where its page is, marked data-mirror-placeholder (hidden here,
-//    shown by the replay - src/screen/live.ts).
+//  - The copy of the screen other players see (src/mirror) takes the page in when the frame is
+//    marked data-mirror-frame: the app did not ask to be left out (`mirror = false`), and the page
+//    can be read from here (one from another origin - a site, a dev server - cannot). Otherwise
+//    they see the app's icon and name where its page is, marked data-mirror-placeholder (hidden
+//    here, shown by the replay - src/screen/live.ts).
 
 /** Where the SDK is served from: beside os.html (web/build/sdk in the game, public/sdk in a browser). */
 const SDK_URL = new URL('sdk/sdcomputers.js', document.baseURI).href;
@@ -102,6 +104,8 @@ export default function ExtApp({ win }: AppProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
+  /** The page in the frame can be read, so the copy of the screen can show it. */
+  const [readable, setReadable] = useState(false);
   const [modal, setModal] = useState<Modal | null>(null);
   const modalRef = useRef<Modal | null>(null);
   modalRef.current = modal;
@@ -470,6 +474,7 @@ export default function ExtApp({ win }: AppProps) {
     try {
       const w = frame.contentWindow as (Window & { computer?: unknown }) | null;
       const page = frame.contentDocument;
+      setReadable(page !== null);
       if (!w || !page || w.computer) return;
       // (a new document, still to start its SDK: what is sent meanwhile waits for its hello)
       ready.current = false;
@@ -478,10 +483,13 @@ export default function ExtApp({ win }: AppProps) {
       (page.head ?? page.documentElement).appendChild(script);
     } catch {
       /* another origin */
+      setReadable(false);
     }
   }, []);
 
   if (!def || !ext) return null;
+
+  const share = ext.mirror !== false;
 
   const splash = (
     <div className="flex flex-col items-center justify-center gap-3">
@@ -500,7 +508,8 @@ export default function ExtApp({ win }: AppProps) {
             title={def.label}
             onLoad={onLoad}
             allow="autoplay; clipboard-read; clipboard-write"
-            className="mirror-block absolute inset-0 block h-full w-full border-0"
+            data-mirror-frame={share ? '' : undefined}
+            className={`${share ? '' : 'mirror-block '}absolute inset-0 block h-full w-full border-0`}
             style={{ opacity: loaded ? 1 : 0, transition: 'opacity 160ms ease-out' }}
           />
           <div className="absolute inset-0 flex items-center justify-center bg-win pointer-events-none" style={{ opacity: loaded ? 0 : 1, transition: 'opacity 200ms ease-out' }}>
@@ -514,10 +523,12 @@ export default function ExtApp({ win }: AppProps) {
         </div>
       )}
 
-      {/* What the players watching this computer's screen see where the page is (src/screen/live.ts). */}
-      <div data-mirror-placeholder className="ext-mirror absolute inset-0 z-[5] flex items-center justify-center bg-win" style={{ visibility: 'hidden' }} aria-hidden>
-        {splash}
-      </div>
+      {/* What the players watching this computer's screen see where a page they cannot see is (src/screen/live.ts). */}
+      {!(share && readable) && (
+        <div data-mirror-placeholder className="ext-mirror absolute inset-0 z-[5] flex items-center justify-center bg-win" style={{ visibility: 'hidden' }} aria-hidden>
+          {splash}
+        </div>
+      )}
 
       {!active && <div className="absolute inset-0 z-10" />}
 

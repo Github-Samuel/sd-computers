@@ -32,6 +32,8 @@ local READY_MS = 2500
 local RESYNC_MS = 2500
 ---@type integer Most batches held while an earlier one is still on its way.
 local MAX_HELD = 64
+---@type string GlobalState key the server publishes where the custom apps' pages and icons come from under.
+local HOSTS_KEY = 'sd-computers:appHosts'
 
 ---@class LiveScreen
 ---@field key string the computer's instance
@@ -93,7 +95,12 @@ local function start(w)
         key = w.key, n = w.n, vw = w.vw, vh = w.vh, id = lastPage,
         since = GetGameTimer(), ready = false, held = {},
     }
-    e.browser = dui.acquire(dui.url('live', w.style, { id = e.id, vw = w.vw, vh = w.vh }))
+    -- (the page loads nothing from anywhere it is not told it may: the custom apps' hosts, for
+    -- their icons and what their pages show)
+    e.browser = dui.acquire(dui.url('live', w.style, {
+        id = e.id, vw = w.vw, vh = w.vh,
+        apps = GlobalState[HOSTS_KEY] or '',
+    }))
     live[w.key] = e
     pages[e.id] = e
     log.debug('screens', 'watching %s', w.key)

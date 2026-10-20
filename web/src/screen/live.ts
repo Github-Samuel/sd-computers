@@ -73,8 +73,18 @@ export function createPlayer(host: HTMLElement, stage: { w: number; h: number },
     canvas.style.backgroundSize = '100% 100%';
     canvas.style.backgroundRepeat = 'no-repeat';
   };
-  const boxAll = (): void => replayer?.iframe.contentDocument?.querySelectorAll<HTMLElement>('canvas').forEach(box);
-  /** Canvases that arrive after the snapshot (a hack window opening) are boxed as they are added. */
+  const boxAll = (): void => {
+    const doc = replayer?.iframe.contentDocument;
+    if (!doc) return;
+    doc.querySelectorAll<HTMLElement>('canvas').forEach(box);
+    // (and in the custom apps' pages, each a frame of its own)
+    doc.querySelectorAll('iframe').forEach(f => f.contentDocument?.querySelectorAll<HTMLElement>('canvas').forEach(box));
+  };
+  /**
+   * Canvases that arrive after the snapshot (a hack window opening) are boxed as they are added.
+   * One in a custom app's page is not seen being added (that page is another document, filled in
+   * after the snapshot): the look at the fit every FIT_MS boxes it.
+   */
   const added = new MutationObserver(boxAll);
 
   /** A minigame frame: what a canvas showed on the recorder's side, as an image. */
@@ -100,8 +110,9 @@ export function createPlayer(host: HTMLElement, stage: { w: number; h: number },
       triggerFocus: false,
       pauseAnimation: false, // (a live copy is never "paused": frozen, every fade-in would sit at its first frame)
       UNSAFE_replayCanvas: false,
-      // A custom app's page is another document, which the recording leaves out: what stands in its
-      // place is the app's icon and name, kept hidden on the computer itself (src/apps/ext/index.tsx).
+      // A custom app's page the recording leaves out (the app asked to be, or its page could not be
+      // read): what stands in its place is the app's icon and name, kept hidden on the computer
+      // itself (src/apps/ext/index.tsx).
       insertStyleRules: ['[data-mirror-placeholder] { visibility: visible !important; }'],
     });
     r.on('fullsnapshot-rebuilded', () => {
@@ -133,7 +144,10 @@ export function createPlayer(host: HTMLElement, stage: { w: number; h: number },
     if (kept.length > MAX_KEPT) kept.splice(0, kept.length - MAX_KEPT / 2);
   };
 
-  window.setInterval(fit, FIT_MS);
+  window.setInterval(() => {
+    fit();
+    boxAll();
+  }, FIT_MS);
 
   return {
     push(blob, reset) {

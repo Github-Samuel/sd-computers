@@ -6,17 +6,21 @@ local log = require 'shared.log'
 local session = require 'server.computers.session'
 ---@type table Cooldown gate (server.computers.ratelimit).
 local ratelimit = require 'server.computers.ratelimit'
+---@type table Custom apps registry (server.computers.apps).
+local apps = require 'server.computers.apps'
 
 ---@type table Screen settings (config.Screens).
 local S = config.Screens or {}
 ---@type table Live-copy settings (config.Screens.Mirror).
 local M = S.Mirror or {}
 
--- The screen on a computer's prop. Two things happen here:
+-- The screen on a computer's prop. Three things happen here:
 --   1. every computer in use is published (GlobalState), so the clients around it know its screen
 --      is on and in which style;
 --   2. while players stand near one, the session's NUI records what it draws and this relays the
---      recording to them (client/screens/mirror.lua plays it on the prop).
+--      recording to them (client/screens/mirror.lua plays it on the prop);
+--   3. where the custom apps' pages and icons are served from is published too: the page a screen
+--      plays the recording on loads nothing from anywhere it is not told it may (web/src/screen).
 -- The relay never reads a recording: it checks that the sender holds that computer's session, that
 -- the batch fits the size and rate caps, and that each watcher really is standing near the
 -- computer. Batches are numbered by the sender; the watchers put them back in order.
@@ -26,6 +30,8 @@ local mirror = {}
 
 ---@type string GlobalState key the computers in use are published under.
 local STATE_KEY = 'sd-computers:active'
+---@type string GlobalState key the custom apps' origins are published under (space-separated).
+local HOSTS_KEY = 'sd-computers:appHosts'
 ---@type boolean Whether screens are drawn at all.
 local ENABLED = S.Enabled ~= false
 ---@type boolean Whether a session is shared with the players around it.
@@ -66,6 +72,22 @@ local function publish()
         out[instance] = { style = a.style, x = a.x, y = a.y, z = a.z, n = a.n }
     end
     GlobalState[STATE_KEY] = out
+end
+
+---Publish where the custom apps' pages and icons come from ('https://cfx-nui-my-res', or the host
+---of an http(s) address an app was given).
+local function publishHosts()
+    local seen, list = {}, {}
+    for _, app in ipairs(apps.all()) do
+        for _, url in ipairs({ app.ui or '', app.icon or '' }) do
+            local host = url:match('^(https?://[^/]+)')
+            if host and not seen[host] then
+                seen[host] = true
+                list[#list + 1] = host
+            end
+        end
+    end
+    GlobalState[HOSTS_KEY] = table.concat(list, ' ')
 end
 
 ---@param t table|nil
@@ -228,8 +250,13 @@ end)
 ---the lock faces back at once).
 function mirror.unpublish()
     GlobalState[STATE_KEY] = {}
+    GlobalState[HOSTS_KEY] = ''
 end
 
-if ENABLED then publish() end
+if ENABLED then
+    publish()
+    publishHosts()
+    apps.onChanged(publishHosts)
+end
 
 return mirror

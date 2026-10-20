@@ -36,6 +36,8 @@ export const params = {
   id: size('id', 0),
   /** Hosts a wallpaper image may come from, space-separated. */
   imageHosts: text('img', ''),
+  /** Where the custom apps' pages and icons are served from (images, fonts and stylesheets in them), space-separated. */
+  appHosts: text('apps', ''),
 };
 
 /** POST to one of the resource's NUI callbacks (a no-op outside the game). */

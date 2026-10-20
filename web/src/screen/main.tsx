@@ -25,17 +25,22 @@ import { inGame, params, post, resource } from './params';
 // one lands). It draws in the top-left vw x vh of its window - the part mapped onto the screen.
 
 // What is replayed here was recorded on another player's machine. It cannot run script (the
-// replay's iframe is sandboxed), and with this it cannot fetch anything from outside either.
+// replay's iframe is sandboxed), and with this it cannot fetch anything from anywhere the server
+// did not name either: this resource, the wallpapers' hosts, and the custom apps' (their icons,
+// and the pictures, fonts and stylesheets of their pages).
 if (inGame) {
-  const hosts = params.imageHosts.split(/\s+/).filter(h => /^https?:\/\/[\w.-]+(:\d+)?$/.test(h));
+  const hostsOf = (list: string): string[] => list.split(/\s+/).filter(h => /^https?:\/\/[\w.-]+(:\d+)?$/.test(h));
+  const wallpapers = hostsOf(params.imageHosts);
+  const apps = hostsOf(params.appHosts);
   const own = `'self' data: blob:`;
   const meta = document.createElement('meta');
   meta.httpEquiv = 'Content-Security-Policy';
   meta.content = [
     `default-src ${own}`,
     `script-src 'self'`,
-    `style-src ${own} 'unsafe-inline'`,
-    `img-src ${[own, ...hosts].join(' ')}`,
+    `style-src ${[own, ...apps].join(' ')} 'unsafe-inline'`,
+    `img-src ${[own, ...wallpapers, ...apps].join(' ')}`,
+    `font-src ${[own, ...apps].join(' ')}`,
     `connect-src ${own} https://${resource}`,
   ].join('; ');
   document.head.appendChild(meta);
