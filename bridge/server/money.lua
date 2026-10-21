@@ -36,17 +36,19 @@ function money.add(source, moneyType, amount, reason)
     local p = player_mod.get(source)
     if not p then
         dprint('add: player not found for src=%s — aborting', tostring(source))
-        return
+        return false
     end
 
     if framework.name == 'qb' then
         dprint('add: calling QBCore AddMoney type=%s amount=%s', tostring(converted), tostring(amount))
-        p.Functions.AddMoney(converted, amount, reason)
+        return p.Functions.AddMoney(converted, amount, reason) ~= false
     elseif framework.name == 'esx' then
         dprint('add: calling ESX addAccountMoney type=%s amount=%s', tostring(converted), tostring(amount))
         p.addAccountMoney(converted, amount)
+        return true
     else
         dprint('add: unsupported framework %s — no money added', tostring(framework.name))
+        return false
     end
 end
 

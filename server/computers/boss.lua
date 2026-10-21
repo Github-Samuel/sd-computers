@@ -128,7 +128,7 @@ rpc.register('boss:setGrade', 'boss', function(src, s, payload)
     local target = employees.sourceOf(cid)
     if target then notify.to(target, { title = def.label, description = locale('boss.notify_grade', def.grades[grade].name), type = 'inform' }) end
     return rpc.ok()
-end)
+end, 1)
 
 ---Fire someone below your grade (online or offline).
 ---@param payload { cid: string }
@@ -151,7 +151,7 @@ rpc.register('boss:fire', 'boss', function(src, s, payload)
     audit(s, logs.EVENT.BOSS_FIRE, locale('logs.boss_fire', s.name, name, def and def.label or s.bossJob), { cid = cid })
     if target then notify.to(target, { title = def and def.label or s.bossJob, description = locale('boss.notify_fired'), type = 'error' }) end
     return rpc.ok()
-end)
+end, 1)
 
 ---Players near the COMPUTER who could be hired (not yourself, not already in this job).
 rpc.register('boss:nearby', 'boss', function(src, s)
@@ -213,7 +213,7 @@ rpc.register('boss:hire', 'boss', function(src, s, payload)
     audit(s, logs.EVENT.BOSS_HIRE, locale('logs.boss_hire', s.name, name, def.label), { cid = player.getIdentifier(target), byId = payload.byId == true or nil })
     notify.to(target, { title = def.label, description = locale('boss.notify_hired', def.label), type = 'success' })
     return rpc.ok({ name = name })
-end)
+end, 1)
 
 ---Move the boss's own money into the society. Debit first (it's the step that can fail on
 ---insufficient funds); if the society credit then fails, the debit is refunded.
@@ -236,7 +236,7 @@ rpc.register('boss:deposit', 'boss', function(src, s, payload)
     end
     audit(s, logs.EVENT.BOSS_DEPOSIT, locale('logs.boss_deposit', s.name, amount, label), { amount = amount, from = from })
     return rpc.ok({ balance = society.balance(s.bossJob) })
-end)
+end, 1)
 
 ---Move society money to the boss. The society debit is refused outright when it can't cover it.
 ---@param payload { amount: number }
@@ -248,9 +248,12 @@ rpc.register('boss:withdraw', 'boss', function(src, s, payload)
     local def = employees.job(s.bossJob)
     local label = def and def.label or s.bossJob
     if not society.withdraw(s.bossJob, amount, s.name, label) then return rpc.fail('boss.err_society_broke') end
-    money.add(src, B.WithdrawTo or 'bank', amount, 'sd-computers-society-withdraw')
+    if not money.add(src, B.WithdrawTo or 'bank', amount, 'sd-computers-society-withdraw') then
+        society.deposit(s.bossJob, amount, s.name, label)
+        return rpc.fail('boss.err_failed', '?')
+    end
     audit(s, logs.EVENT.BOSS_WITHDRAW, locale('logs.boss_withdraw', s.name, amount, label), { amount = amount })
     return rpc.ok({ balance = society.balance(s.bossJob) })
-end)
+end, 1)
 
 return {}
