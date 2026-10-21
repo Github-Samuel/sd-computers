@@ -49,6 +49,8 @@ local MAX_BATCH = 1024 * 1024
 local RATE = 256 * 1024
 ---@type integer Bytes: the most a session can have saved up.
 local BURST = 2 * 1024 * 1024
+local OUT_RATE = 1024 * 1024
+local OUT_BURST = 12 * 1024 * 1024
 ---@type integer Bytes: batches up to this go as ordinary events, larger ones as latent events.
 local SMALL = 4 * 1024
 ---@type integer Bytes a second a latent batch is sent to a watcher at.
@@ -62,6 +64,7 @@ local watchers = {}
 local watching = {}
 ---@type table<integer, { tokens: number, at: integer }> session holder -> their byte budget.
 local budget = {}
+local relayed = {}
 ---@type integer Counts sessions, so a client can tell a new one from the one it was watching.
 local serial = 0
 
@@ -145,6 +148,17 @@ local function spend(src, size)
     return true
 end
 
+local function spendOut(src, size)
+    local now = GetGameTimer()
+    local b = relayed[src]
+    if not b then b = { tokens = OUT_BURST, at = now }; relayed[src] = b end
+    b.tokens = math.min(OUT_BURST, b.tokens + (now - b.at) / 1000 * OUT_RATE)
+    b.at = now
+    if b.tokens < size then return false end
+    b.tokens = b.tokens - size
+    return true
+end
+
 session.onOpen(function(src, s)
     if not ENABLED then return end
     serial = serial + 1
@@ -157,6 +171,7 @@ session.onClose(function(src, s)
     if not a or a.src ~= src then return end
     active[s.instance] = nil
     budget[src] = nil
+    relayed[src] = nil
     for w in pairs(watchers[s.instance] or {}) do
         if watching[w] then watching[w][s.instance] = nil end
     end
@@ -211,7 +226,7 @@ RegisterNetEvent('sd-computers:server:mirror:batch', function(seq, full, blob)
     local n = type(seq) == 'number' and math.tointeger(seq) or nil
     if not n or type(blob) ~= 'string' then return end
     local size = #blob
-    if size == 0 or size > MAX_BATCH or not spend(src, size) then return end
+    if size == 0 or size > MAX_BATCH or not spend(src, size) or not spendOut(src, size * count(list)) then return end
 
     full = full == true
     for w in pairs(list) do
