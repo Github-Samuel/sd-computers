@@ -115,7 +115,12 @@ end
 ---@return string|nil why locale key
 function appdata.set(app, owner, key, value)
     local lock = app .. '|' .. owner
-    while writing[lock] do Wait(0) end
+    local waited = 0
+    while writing[lock] do
+        if waited >= 500 then return false, 'err.internal' end
+        waited = waited + 1
+        Wait(10)
+    end
     writing[lock] = true
     local ok, done, why = pcall(set, app, owner, key, value)
     writing[lock] = nil
