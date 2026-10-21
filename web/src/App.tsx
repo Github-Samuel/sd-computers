@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { HackRun, OpenPayload } from './types';
+import type { AppId, HackRun, OpenPayload } from './types';
 import { useNuiEvent } from './hooks/useNuiEvent';
 import { fetchNui, isEnvBrowser } from './nui/bridge';
 import { mockPayloadFor } from './nui/mock/payload';
@@ -16,6 +16,7 @@ import Computer from './os/Computer';
 import LibHack from './os/LibHack';
 import Paper, { type PaperPage } from './os/Paper';
 import { mockPage } from './nui/mock/print';
+import type { FontKey } from './lib/richdoc';
 import { useExtEvents } from './apps/ext/events';
 
 /** computers:mail:received (built-in Mail) - also what a phone mail push is reshaped into. */
@@ -161,7 +162,7 @@ export default function App() {
     // (on a prop's screen the prop is the monitor: retro leaves its own chassis off, as Lua asks it to)
     if (query.has('frame')) mockPayload.desktop.monitor = false;
     if (hash === 'paper') {
-      setPaper(mockPage(query.get('kind'), query.get('font') as never));
+      setPaper(mockPage(query.get('kind'), query.get('font') as FontKey | null));
       return;
     }
     if (hash === 'lib') {
@@ -172,7 +173,7 @@ export default function App() {
     if (hash) {
       const os = useOS.getState();
       os.setPhase('desktop');
-      if (hash !== 'desktop') window.setTimeout(() => os.openApp(hash as never), 50);
+      if (hash !== 'desktop') window.setTimeout(() => os.openApp(hash as AppId), 50);
     }
     // Reopen after "shutting down" so the browser session never ends up on a blank page.
     const reopen = () => window.setTimeout(() => open(mockPayload), 1200);
