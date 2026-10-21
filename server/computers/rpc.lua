@@ -3,6 +3,8 @@ local log = require 'shared.log'
 ---@type table Session gate (server.computers.session).
 local session = require 'server.computers.session'
 
+local ratelimit = require 'server.computers.ratelimit'
+
 ---@type table RPC module; the table returned at end of file.
 local rpc = {}
 
@@ -15,8 +17,8 @@ local handlers = {}
 ---@param name string endpoint, e.g. 'mail:send'
 ---@param app string|nil app the caller must have here (nil = any signed-in session)
 ---@param fn fun(src: integer, s: ComputerSession, payload: table): table handler returning { ok, data?, error? }
-function rpc.register(name, app, fn)
-    handlers[name] = { app = app, fn = fn }
+function rpc.register(name, app, fn, limit)
+    handlers[name] = { app = app, fn = fn, limit = limit }
 end
 
 ---Shorthand success reply.
@@ -43,8 +45,11 @@ lib.callback.register('sd-computers:server:rpc', function(src, name, payload)
     local h = type(name) == 'string' and handlers[name]
     if not h then return rpc.fail('err.invalid') end
 
+    if not ratelimit.bucket(src, 'rpc', 40, 15) then return rpc.fail('err.slow_down') end
+
     local s, err = session.guard(src, h.app)
     if not s then return { ok = false, error = err } end
+    if h.limit and not ratelimit.take(src, 'rpc:' .. name, h.limit) then return rpc.fail('err.slow_down') end
 
     local ok, res = pcall(h.fn, src, s, type(payload) == 'table' and payload or {})
     if not ok then
@@ -52,6 +57,10 @@ lib.callback.register('sd-computers:server:rpc', function(src, name, payload)
         return rpc.fail('err.internal')
     end
     return res or rpc.ok()
+end)
+
+AddEventHandler('playerDropped', function()
+    ratelimit.clear(source)
 end)
 
 return rpc

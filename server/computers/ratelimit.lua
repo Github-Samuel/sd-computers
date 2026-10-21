@@ -19,6 +19,21 @@ function ratelimit.take(src, key, seconds)
     return true
 end
 
+local buckets = {}
+
+function ratelimit.bucket(src, key, burst, perSecond)
+    local now = GetGameTimer()
+    local mine = buckets[src]
+    if not mine then mine = {}; buckets[src] = mine end
+    local b = mine[key]
+    if not b then b = { tokens = burst, at = now }; mine[key] = b end
+    b.tokens = math.min(burst, b.tokens + (now - b.at) / 1000 * perSecond)
+    b.at = now
+    if b.tokens < 1 then return false end
+    b.tokens = b.tokens - 1
+    return true
+end
+
 ---Seconds left on `src`'s cooldown for `key` (0 when free).
 ---@param src integer player server id
 ---@param key string action key
@@ -33,6 +48,7 @@ end
 ---@param src integer player server id
 function ratelimit.clear(src)
     until_[src] = nil
+    buckets[src] = nil
 end
 
 return ratelimit
