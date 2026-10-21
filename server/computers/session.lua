@@ -297,6 +297,14 @@ function session.actor(s)
     return { cid = s.citizenid, name = s.name }
 end
 
+local function sameText(a, b)
+    local diff = #a ~ #b
+    for i = 1, math.max(#a, #b) do
+        diff = diff | ((a:byte(i) or 0) ~ (b:byte(i) or 0))
+    end
+    return diff == 0
+end
+
 ---Seconds left on a player's PIN lockout for a computer (0 = not locked out).
 ---@param citizenid string
 ---@param id string computer id
@@ -409,9 +417,10 @@ function session.signIn(src, pin)
         local left = lockoutLeft(s.citizenid, s.def.id)
         if left > 0 then return { ok = false, error = locale('err.locked_out', left), lockedFor = left } end
 
-        if tostring(pin or '') ~= tostring(expected) then
+        if not sameText(tostring(pin or ''), tostring(expected)) then
             local st = pinState[key] or { fails = 0 }
             st.fails = st.fails + 1
+            st.at = os.time()
             pinState[key] = st
             logs.write(s.instance, {
                 level = 'failure', source = 'Security', eventId = logs.EVENT.LOGON_FAILED,
@@ -647,6 +656,16 @@ end)
 
 AddEventHandler('playerDropped', function()
     session.close(source)
+end)
+
+CreateThread(function()
+    while true do
+        Wait(10 * 60 * 1000)
+        local now = os.time()
+        for key, st in pairs(pinState) do
+            if now - math.max(st.lockedUntil or 0, st.at or 0) > 600 then pinState[key] = nil end
+        end
+    end
 end)
 
 return session
