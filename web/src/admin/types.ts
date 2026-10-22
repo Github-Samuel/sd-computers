@@ -3,9 +3,10 @@ export type Tab = (typeof TABS)[number];
 
 // Where a computer comes from: placed from this panel (kept in the database, everything about it
 // can be changed here), picked from this panel ('world': the same, but its prop is one the game
-// already had there), a fixed location in configs/shared/computers.lua, or a model computer from
-// that file (every prop of those models in the world - it has no one place).
-export type Source = 'placed' | 'world' | 'config' | 'model';
+// already had there), a fixed location in configs/shared/computers.lua, a model computer from
+// that file (every prop of those models in the world - it has no one place), or one another
+// resource added with the AddComputer export ('script': that resource's to change, not the panel's).
+export type Source = 'placed' | 'world' | 'config' | 'model' | 'script';
 
 // A computer as the server describes it (server/admin/panel.lua > snapshot).
 export interface Computer {
@@ -17,7 +18,8 @@ export interface Computer {
   hostname: string;
   style: string; // the style it opens in
   styleSet: boolean; // false = it follows the default style
-  prop?: string; // placed / picked: the model it is
+  prop?: string; // placed / picked / script: the model it is (a script's may have none: a target box)
+  resource?: string; // script: the resource that added it
   models?: string[]; // model computers: the models that are it
   off?: boolean; // model computers: no prop is it right now (switched off in the Automatic tab)
   removed?: boolean; // config locations: taken away in this panel (still in the file; it can be put back)

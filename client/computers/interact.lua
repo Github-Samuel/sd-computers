@@ -96,17 +96,18 @@ for _, def in ipairs(config.Computers or {}) do
     end
 end
 
----Export: open a computer from another resource (a laptop item, a phone app, a scripted scene).
----Location computers open at their config coords; for a model computer pass the prop's coords
----(or omit them to use the player's position - e.g. a held laptop). The server still enforces
----reach and the computer's job lock, so this grants nothing the player couldn't do at the desk.
----`opts.style` forces a look for this open ('modern' | 'retro' | 'mac' - any Desktop.Styles key).
----The camera goes up to the prop's screen as it does from the target option; with no coords
----there is no prop to go to, and the desktop is fullscreen.
----@param id string computers.lua id
+---Open a computer by its id: one from computers.lua, or one placed in the admin panel or added by
+---another resource (those open at their own spot, on their prop while it is standing). Location
+---computers open at their config coords; for a model computer `coords` is the prop's (left out, the
+---player's position - e.g. a held laptop). The server still enforces reach, the job lock and the
+---owners, so this grants nothing the player couldn't do at the desk. `opts.style` forces a look for
+---this open ('modern' | 'retro' | 'mac' - any Desktop.Styles key). The camera goes up to the prop's
+---screen as it does from the target option; with no prop to go to the desktop is fullscreen.
+---@param id string computer id
 ---@param coords? vector3 prop coords for a model computer
 ---@param opts? { style?: string }
-exports('OpenComputer', function(id, coords, opts)
+---@return boolean found
+local function openById(id, coords, opts)
     local style = type(opts) == 'table' and opts.style or nil
     if removed.is(id) then return false end -- (taken away in the admin panel: the server would refuse it anyway)
     for _, def in ipairs(config.Computers or {}) do
@@ -121,7 +122,37 @@ exports('OpenComputer', function(id, coords, opts)
             return true
         end
     end
-    return false
+    local rec, obj = placed.byKey(id)
+    if not rec then return false end
+    local c = rec.coords
+    state.open(rec.key, vec3(c.x, c.y, c.z), false, style, obj)
+    return true
+end
+
+---Export: open a computer from another resource (a laptop item, a phone app, a scripted scene).
+exports('OpenComputer', openById)
+
+---The server's OpenComputer export: the same, asked of this player.
+---@param id string
+---@param coords? vector3
+---@param opts? { style?: string }
+RegisterNetEvent('sd-computers:client:openComputer', function(id, coords, opts)
+    if type(id) == 'string' then openById(id, coords, opts) end
+end)
+
+---Export: close the computer this player has open (cuffed, a cutscene starting). Signed out and
+---logged off as if they shut it down.
+---@return boolean closed false when none was open
+exports('CloseComputer', function()
+    if not state.isOpen() then return false end
+    state.close()
+    return true
+end)
+
+---Export: whether this player has a computer open.
+---@return boolean
+exports('IsComputerOpen', function()
+    return state.isOpen()
 end)
 
 -- Debug-only placement helper: aim at a monitor/keyboard and run the command - the hit point is

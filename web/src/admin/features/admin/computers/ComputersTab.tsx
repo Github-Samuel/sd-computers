@@ -17,13 +17,15 @@ const jobsOf = (c: Computer) => Object.entries(c.groups ?? {}).map(([job, grade]
 const made = (c: Computer) => c.source === 'placed' || c.source === 'world';
 
 // Where it is, in the row's second line: a placed or picked computer says its id, spot and prop; a
-// config one its id and spot; a model computer the props that are it (it has no one place).
+// config one its id and spot; one a resource added the resource too; a model computer the props
+// that are it (it has no one place).
 const whereOf = (c: Computer) => {
   if (c.source === 'model') {
     const models = c.models ?? [];
     return `${c.key} · ${models.slice(0, 2).join(', ')}${models.length > 2 ? ` ${t('computers.more_models', models.length - 2)}` : ''}`;
   }
   if (made(c)) return `#${c.id} · ${c.hostname} · ${coords(c)} · ${Math.round(c.heading ?? 0)}° · ${c.prop}`;
+  if (c.source === 'script') return [c.key, c.resource, c.hostname, coords(c), c.prop].filter(Boolean).join(' · ');
   return `${c.key} · ${c.hostname} · ${coords(c)}`;
 };
 
@@ -57,7 +59,9 @@ const Row = ({ c, style, prop, onEdit, onDelete }: { c: Computer; style?: OsStyl
           <button type="button" className="inline-flex p-0 bg-transparent border-0" title={[styleLike(c.style), t('computers.show_style')].filter(Boolean).join(' · ')} onClick={showStyle}>
             <Badge>{style?.name ?? c.style}</Badge>
           </button>
-          <Badge tone={made(c) ? 'accent' : 'neutral'}>{t(`computers.source_${c.source}`)}</Badge>
+          <span title={c.source === 'script' ? t('computers.script_hint', c.resource ?? '') : undefined}>
+            <Badge tone={made(c) ? 'accent' : 'neutral'}>{t(`computers.source_${c.source}`)}</Badge>
+          </span>
           {c.off && <Status>{t('computers.off')}</Status>}
           {gone && (
             <span title={t('computers.removed_hint')}>
@@ -163,7 +167,7 @@ export function ComputersTab() {
   const query = search.trim().toLowerCase();
   const shown = all.filter(
     c =>
-      (filter === 'all' || (filter === 'placed') === made(c)) &&
+      (filter === 'all' || (filter === 'placed' ? made(c) : c.source === 'config' || c.source === 'model')) &&
       `${c.label} ${c.key} ${c.hostname} ${c.prop ?? ''} ${(c.models ?? []).join(' ')} ${styles[c.style]?.name ?? c.style} ${Object.keys(c.groups ?? {}).join(' ')} ${c.boss ?? ''} ${c.users.join(' ')}`.toLowerCase().includes(query),
   );
 

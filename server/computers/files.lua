@@ -12,6 +12,8 @@ local richdoc = require 'server.computers.richdoc'
 local photos = require 'server.computers.photos'
 ---@type table Printing (server.computers.printing): a document can be printed.
 local printing = require 'server.computers.printing'
+---@type table Player bridge (bridge.server.player): whose documents a server id's are (AddFile).
+local player = require 'bridge.server.player'
 
 -- Files: the character's documents. A document is a name and a body, kept in computers_files
 -- under the character's citizenid, so what is written on one computer is there on every other
@@ -452,6 +454,27 @@ registerPhone('files:fromPhone', function(src, s, p)
     local row = id and metaOf(s.citizenid, id)
     if not row then return rpc.fail('err.internal') end
     return rpc.ok(row)
+end)
+
+---Export: put a plain-text document into a character's Files - heist intel, a report, a letter. A
+---name already in use gets a number after it; text over MaxBody is cut short.
+---@param target string|integer a citizenid, or an online player's server id
+---@param file { name?: string, body: string }
+---@return integer|false id
+---@return string nameOrWhy the name it was saved under, or why not: 'no_character', 'bad_file', 'full', 'failed'
+exports('AddFile', function(target, file)
+    local citizenid = target
+    if type(target) == 'number' then citizenid = player.getIdentifier(target) end
+    if type(citizenid) ~= 'string' or citizenid == '' then return false, 'no_character' end
+    if type(file) ~= 'table' or type(file.body) ~= 'string' then return false, 'bad_file' end
+
+    local list = namesOf(citizenid)
+    if #list >= MAX_FILES then return false, 'full' end
+    local name = freeName(list, cleanName(file.name))
+    local body = text.clip(file.body, MAX_BODY)
+    local id = MySQL.insert.await('INSERT INTO computers_files (citizenid, name, body, size) VALUES (?, ?, ?, ?)', { citizenid, name, body, #body })
+    if not id then return false, 'failed' end
+    return id, name
 end)
 
 return files

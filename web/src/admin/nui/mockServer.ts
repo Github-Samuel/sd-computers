@@ -17,6 +17,7 @@ let computers: Computer[] = [
   { key: 'placed_1', order: 5, id: 1, source: 'placed', label: 'Mechanic office', hostname: 'MECHANIC-OFF-01', style: 'mac', styleSet: true, prop: 'prop_laptop_01a', x: -339.6, y: -156.9, z: 39.8, heading: 87, groups: { mechanic: 2 }, boss: 'mechanic', pin: false, users: [] },
   { key: 'placed_2', order: 6, id: 2, source: 'placed', label: 'Vanilla Unicorn back room', hostname: 'VANILLA-UNIC-02', style: 'modern', styleSet: false, prop: 'prop_monitor_01a', x: 95.4, y: -1294.1, z: 29.6, heading: 211.5, pin: false, users: ['Devon Price'] },
   { key: 'placed_3', order: 7, id: 3, source: 'world', label: 'Booking desk', hostname: 'BOOKING-DESK-03', style: 'retro', styleSet: true, prop: 'prop_monitor_03b', x: 461.0, y: -988.4, z: 24.8, heading: 300, groups: { police: 0 }, pin: false, users: [] },
+  { key: 'house_14_desk', order: 8, source: 'script', resource: 'sd-housing', label: 'Home office', hostname: 'HOME-OFFICE', style: 'mac', styleSet: true, prop: 'prop_laptop_01a', x: -174.3, y: 502.6, z: 137.4, heading: 190, pin: true, users: [] },
 ];
 
 // The printers: stood from the panel, or picked.

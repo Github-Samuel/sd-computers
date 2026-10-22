@@ -17,7 +17,9 @@
     "notes_full": "You have reached the maximum number of notes.",
     "phone_unavailable": "The phone link is unavailable right now.",
     "computer_changed": "An administrator moved or removed this computer.",
-    "computer_updated": "An administrator changed this computer. Open it again."
+    "computer_updated": "An administrator changed this computer. Open it again.",
+    "computer_gone": "This computer is not here any more.",
+    "computer_reset": "This computer was changed. Open it again."
   },
   "logs": {
     "cleared": "The audit log was cleared. Subject: %s",
@@ -1793,6 +1795,8 @@
         "source_world": "Picked",
         "source_config": "Config",
         "source_model": "Every prop",
+        "source_script": "Script",
+        "script_hint": "Added by %s with the AddComputer export: change it there",
         "more_models": "+%s more",
         "in_use_by": "In use: %s",
         "in_use_count": "%s in use",

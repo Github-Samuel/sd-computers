@@ -63,6 +63,7 @@ require 'server.computers.bank' -- Bank: the character's balance + statement (re
 require 'server.computers.browser' -- Browser: the sites of configs/shared/browser.lua
 require 'server.computers.web' -- Browser: its live sites, read from sd-phone's public apps over the link
 require 'server.computers.appapi' -- Custom apps: what their pages call, and the exports that register them
+require 'server.computers.added' -- AddComputer: the computers other resources add, kept while they run
 require 'server.admin.panel' -- the /computeradmin panel's verbs: list, place, change, move, remove
 
 ---Retention purge at boot, then every 6 hours.
@@ -73,19 +74,101 @@ CreateThread(function()
     end
 end)
 
----Export: every computer (id, label, location or model) - the configured ones and the ones made
----from the admin panel (`placed = true`, with the prop they are; `world = true` when that prop is
----one the game already had there) - for other resources that want to write logs to them or list them.
----One of the config's that the admin panel took away is not listed.
----@return table[] { id, label, hostname, coords?, model?, placed?, prop?, world? }
+---@type table Session module (server.computers.session): who sits where, for the exports below.
+local session = require 'server.computers.session'
+
+---A computer as the exports describe it.
+---@param def table computers.lua entry
+---@return table { id, label, hostname, coords?, model?, placed?, prop?, world?, resource? }
+local function describe(def)
+    return {
+        id = def.id, label = def.label, hostname = def.hostname, coords = def.coords, model = def.model,
+        placed = def.placed ~= nil or nil, prop = def.prop, world = def.world, resource = def.added,
+    }
+end
+
+---Export: every computer (id, label, location or model) - the configured ones, the ones made from
+---the admin panel (`placed = true`, with the prop they are; `world = true` when that prop is one the
+---game already had there) and the ones other resources added (`resource`, the one that added it) -
+---for other resources that want to write logs to them or list them. One of the config's that the
+---admin panel took away is not listed.
+---@return table[] { id, label, hostname, coords?, model?, placed?, prop?, world?, resource? }
 exports('GetComputers', function()
     local out = {}
     for _, def in ipairs(registry.all()) do
-        if not removed.is(def.id) then
-            out[#out + 1] = { id = def.id, label = def.label, hostname = def.hostname, coords = def.coords, model = def.model, placed = def.placed ~= nil or nil, prop = def.prop, world = def.world }
-        end
+        if not removed.is(def.id) then out[#out + 1] = describe(def) end
     end
     return out
+end)
+
+---Export: one computer, as GetComputers lists it (nil for an unknown id, or one the panel took away).
+---@param id string computer id
+---@return table|nil
+exports('GetComputer', function(id)
+    local def = registry.get(id)
+    if not def or removed.is(def.id) then return nil end
+    return describe(def)
+end)
+
+---The open sessions on a computer: its id (for a model computer, every prop of it), or one machine
+---('<id>@x,y,z').
+---@param id any
+---@return integer[] sources
+local function sessionsOn(id)
+    local out = {}
+    for _, h in ipairs(session.holders()) do
+        if h.id == id or h.instance == id then out[#out + 1] = h.src end
+    end
+    return out
+end
+
+---Export: who is at a computer right now (signed in, or still at its lock screen).
+---@param id string a computer id, or one machine of a model computer ('<id>@x,y,z')
+---@return table[] { source, citizenid, name, instance, signedIn }
+exports('GetComputerUsers', function(id)
+    local out = {}
+    for _, src in ipairs(sessionsOn(id)) do
+        local s = session.get(src)
+        if s then out[#out + 1] = { source = src, citizenid = s.citizenid, name = s.name, instance = s.instance, signedIn = s.signedIn == true } end
+    end
+    return out
+end)
+
+---Export: open a computer for a player, from the server (a laptop item's use, a scripted scene). It
+---is asked of their client, as the client export: the server then checks reach, the job lock, the
+---owners and the PIN exactly as it does at the desk, so this grants nothing the player could not do.
+---@param src integer the player's server id
+---@param id string computer id
+---@param opts? { coords?: vector3, style?: string } coords = a model computer's prop (default: where the player stands)
+---@return boolean sent false for an unknown player or computer
+exports('OpenComputer', function(src, id, opts)
+    local player = math.tointeger(tonumber(src))
+    if not player or not GetPlayerName(player) then return false end
+    local def = type(id) == 'string' and registry.get(id)
+    if not def or removed.is(def.id) then return false end
+    local o = type(opts) == 'table' and opts or {}
+    TriggerClientEvent('sd-computers:client:openComputer', player, id, o.coords, { style = o.style })
+    return true
+end)
+
+---Export: close a player's computer, or everyone's at one computer (a house locked, a player cuffed).
+---Each is signed out and logged off as if they shut it down.
+---@param target integer|string a player's server id, or a computer id / one machine ('<id>@x,y,z')
+---@param message? string shown to them (nothing when left out)
+---@return integer closed how many sessions were closed
+exports('CloseComputer', function(target, message)
+    local text = type(message) == 'string' and message ~= '' and require('shared.text').clip(message, 200) or nil
+    local list = {}
+    if type(target) == 'number' then
+        if session.get(target) then list[1] = target end
+    elseif type(target) == 'string' then
+        list = sessionsOn(target)
+    end
+    for _, src in ipairs(list) do
+        session.close(src)
+        TriggerClientEvent('sd-computers:client:forceClose', src, text)
+    end
+    return #list
 end)
 
 local placedCount = 0

@@ -78,18 +78,21 @@ local function snapshot(source)
         users[h.id][#users[h.id] + 1] = h.name
     end
 
-    local pins = (config.Security and config.Security.Pins) or {}
     local computers = {}
     for index, def in ipairs(registry.all()) do
         local row = {
             key = def.id, order = index, label = def.label or def.id, hostname = def.hostname or tostring(def.id):upper(),
             style = registry.style(def), styleSet = registry.styleSet(def), groups = def.groups, users = users[def.id] or {},
-            boss = def.boss == true and '*' or def.boss or nil, pin = pins[def.id] ~= nil,
+            boss = def.boss == true and '*' or def.boss or nil, pin = registry.pin(def) ~= nil,
         }
         if def.placed then
             local r = placed.get(def.placed)
             row.source, row.id, row.prop = r.world and 'world' or 'placed', def.placed, def.prop
             row.x, row.y, row.z, row.heading = r.coords.x, r.coords.y, r.coords.z, r.coords.w
+        elseif def.added then
+            -- (added by another resource with the AddComputer export: that resource's to change, not the panel's)
+            row.source, row.resource, row.prop = 'script', def.added, def.prop
+            row.x, row.y, row.z, row.heading = def.coords.x, def.coords.y, def.coords.z, def.heading or 0.0
         elseif def.coords then
             row.source = 'config'
             row.removed = removed.is(def.id) or nil -- (taken away here: still in the file, not a computer)

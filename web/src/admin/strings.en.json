@@ -100,6 +100,8 @@
     "source_world": "Picked",
     "source_config": "Config",
     "source_model": "Every prop",
+    "source_script": "Script",
+    "script_hint": "Added by %s with the AddComputer export: change it there",
     "more_models": "+%s more",
     "in_use_by": "In use: %s",
     "in_use_count": "%s in use",

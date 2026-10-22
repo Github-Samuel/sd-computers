@@ -135,16 +135,25 @@ local function scan()
     end
 
     -- A location computer is a zone, not a prop: its screen is the screen prop standing in it.
+    ---@param key string the computer's instance
+    ---@param at vector3 the zone's centre
+    ---@param style any
+    local function zone(key, at, style)
+        if #(at - origin) > RANGE + ZONE_RADIUS then return end
+        local best, bestDist
+        for _, p in ipairs(props) do
+            local d = #(p.at - at)
+            if not taken[p.entity] and d <= ZONE_RADIUS and (not bestDist or d < bestDist) then best, bestDist = p, d end
+        end
+        if best then add(best.entity, best.quad, key, style, best.at) end
+    end
     -- (One the admin panel took away has none: its prop is left to be whatever else it is.)
     for _, def in ipairs(zones) do
-        if not removed.is(def.id) and #(def.coords - origin) <= RANGE + ZONE_RADIUS then
-            local best, bestDist
-            for _, p in ipairs(props) do
-                local d = #(p.at - def.coords)
-                if not taken[p.entity] and d <= ZONE_RADIUS and (not bestDist or d < bestDist) then best, bestDist = p, d end
-            end
-            if best then add(best.entity, best.quad, def.id, def.style, best.at) end
-        end
+        if not removed.is(def.id) then zone(def.id, def.coords, def.style) end
+    end
+    -- (and a computer another resource added with no prop of its own is a box, the same way)
+    for rec in placed.boxes() do
+        zone(rec.key, vec3(rec.coords.x, rec.coords.y, rec.coords.z), rec.style)
     end
 
     -- What is left is a computer when its model is one.

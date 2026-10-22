@@ -17,7 +17,9 @@
     "notes_full": "Você chegou ao limite de notas.",
     "phone_unavailable": "A ligação com o celular não está disponível agora.",
     "computer_changed": "Um administrador moveu ou removeu este computador.",
-    "computer_updated": "Um administrador alterou este computador. Abra de novo."
+    "computer_updated": "Um administrador alterou este computador. Abra de novo.",
+    "computer_gone": "Este computador não está mais aqui.",
+    "computer_reset": "Este computador foi alterado. Abra de novo."
   },
   "logs": {
     "cleared": "O registro de auditoria foi limpo. Responsável: %s",
@@ -1793,6 +1795,8 @@
         "source_world": "Escolhido",
         "source_config": "Config",
         "source_model": "Todo prop",
+        "source_script": "Script",
+        "script_hint": "Adicionado por %s com o export AddComputer: altere por lá",
         "more_models": "+%s mais",
         "in_use_by": "Em uso: %s",
         "in_use_count": "%s em uso",

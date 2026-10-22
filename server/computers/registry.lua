@@ -160,6 +160,17 @@ function registry.styleDef(style)
     return (config.Desktop.Styles or {})[style] or {}
 end
 
+---A computer's PIN: configs/server/security.lua's for its id, else the one a resource added it with
+---(AddComputer export). nil = none. Server-side only: it never goes to a client.
+---@param def table computers.lua entry
+---@return string|nil pin
+function registry.pin(def)
+    local pins = (config.Security and config.Security.Pins) or {}
+    local pin = pins[def.id]
+    if pin == nil then pin = def.pin end
+    return pin
+end
+
 ---Every computer, configured and placed (read-only view for exports and the admin panel).
 ---@return table[] defs
 function registry.all()

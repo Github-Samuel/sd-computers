@@ -54,15 +54,13 @@ local function optionKey(rec)
     return target.system == 'ox_target' and ('sd_computers_' .. rec.key) or (T.label or 'Use Computer')
 end
 
----Make a prop the computer: remember it and give it the option.
----@param entry table tracked entry
----@param obj integer
-local function attach(entry, obj)
-    local rec = entry.rec
+---The "Use Computer" option of a computer: on its prop, or on its box when it has none.
+---@param rec table record
+---@param obj integer|nil the prop (nil: a box, whose screen is whatever screen prop stands in it)
+---@return table option
+local function optionOf(rec, obj)
     local c = rec.coords
-    entry.obj = obj
-    entities[obj] = rec.id
-    target.addLocalEntity(obj, { {
+    return {
         name = 'sd_computers_' .. rec.key,
         label = T.label or 'Use Computer',
         icon = T.icon or 'fas fa-desktop',
@@ -70,7 +68,31 @@ local function attach(entry, obj)
         groups = rec.groups, -- ox_target hides the option from everyone else (the server enforces it regardless)
         canInteract = function() return not state.isOpen() and not placer.isActive() and not picker.isActive() end,
         onSelect = function() state.open(rec.key, vec3(c.x, c.y, c.z), false, nil, obj) end,
-    } })
+    }
+end
+
+---Make a prop the computer: remember it and give it the option.
+---@param entry table tracked entry
+---@param obj integer
+local function attach(entry, obj)
+    entry.obj = obj
+    entities[obj] = entry.rec.id
+    target.addLocalEntity(obj, { optionOf(entry.rec, obj) })
+end
+
+---Give a computer that has no prop (one another resource added) its box, as a computers.lua
+---location has one: the option shows while the player looks into it. What takes it away again:
+---ox_target goes by the id it gave, qb-target and qtarget by the name.
+---@param rec table record
+---@return any zone
+local function addBox(rec)
+    local c, b = rec.coords, rec.box
+    local name = 'sd_computers_' .. rec.key
+    local id = target.addBoxZone({
+        name = name, coords = vec3(c.x, c.y, c.z), size = vec3(b.x, b.y, b.z), rotation = c.w,
+        debug = config.Debug, options = { optionOf(rec, nil) },
+    })
+    return target.system == 'ox_target' and id or name
 end
 
 ---Stand a placed computer's prop.
@@ -140,26 +162,29 @@ local function sameGroups(a, b)
     return true
 end
 
----What makes a record a different thing to stand: its prop, its spot, or who may use it.
+---What makes a record a different thing to stand: its prop or box, its spot, or who may use it.
 ---@param a table record
 ---@param b table record
 ---@return boolean
 local function differs(a, b)
     local ca, cb = a.coords, b.coords
+    local ba, bb = a.box or {}, b.box or {}
     return a.prop ~= b.prop or (a.world == true) ~= (b.world == true) or ca.x ~= cb.x or ca.y ~= cb.y or ca.z ~= cb.z or ca.w ~= cb.w
-        or not sameGroups(a.groups, b.groups)
+        or ba.x ~= bb.x or ba.y ~= bb.y or ba.z ~= bb.z or not sameGroups(a.groups, b.groups)
 end
 
----@param id integer
+---@param id integer|string
 local function forget(id)
     local entry = tracked[id]
     if not entry then return end
     despawn(entry)
-    entry.point:remove()
+    if entry.point then entry.point:remove() end
+    if entry.zone then target.removeZone(entry.zone) end
     tracked[id] = nil
 end
 
----Reconcile with the server's list.
+---Reconcile with the server's list (the placed computers, by row id, and the ones other resources
+---added, by 'added:<id>').
 ---@param list table<string, table>|nil GlobalState payload, keyed by stringified computer id
 local function sync(list)
     local seen = {}
@@ -173,16 +198,20 @@ local function sync(list)
         end
         if not tracked[rec.id] then
             local entry = { rec = rec }
-            local point = lib.points.new({ coords = vec3(rec.coords.x, rec.coords.y, rec.coords.z), distance = SPAWN_DISTANCE })
-            function point:onEnter()
-                entry.near = true
-                if rec.world then find(entry) else spawn(entry) end
+            if rec.box then
+                entry.zone = addBox(rec)
+            else
+                local point = lib.points.new({ coords = vec3(rec.coords.x, rec.coords.y, rec.coords.z), distance = SPAWN_DISTANCE })
+                function point:onEnter()
+                    entry.near = true
+                    if rec.world then find(entry) else spawn(entry) end
+                end
+                function point:onExit()
+                    entry.near = false
+                    despawn(entry)
+                end
+                entry.point = point
             end
-            function point:onExit()
-                entry.near = false
-                despawn(entry)
-            end
-            entry.point = point
             tracked[rec.id] = entry
         end
     end
@@ -214,6 +243,29 @@ function placed.each()
         if not entry then return nil end
         return entry.obj, entry.rec
     end
+end
+
+---Every computer that is a box rather than a prop (one another resource added with none), as records
+---- for the screens: its screen is the screen prop standing in it, as a computers.lua location's is.
+---@return fun(): table?
+function placed.boxes()
+    local id, entry
+    return function()
+        repeat id, entry = next(tracked, id) until id == nil or (entry and entry.zone)
+        if not entry then return nil end
+        return entry.rec
+    end
+end
+
+---A placed or added computer by its id: its record, and its prop while that is standing (OpenComputer).
+---@param key string computer id
+---@return table|nil rec
+---@return integer|nil obj
+function placed.byKey(key)
+    for _, entry in pairs(tracked) do
+        if entry.rec.key == key then return entry.rec, entry.obj end
+    end
+    return nil
 end
 
 ---Delete every prop (resource stop).

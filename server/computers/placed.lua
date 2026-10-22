@@ -168,6 +168,9 @@ local function coordsOf(at)
     return { x = x + 0.0, y = y + 0.0, z = z + 0.0, w = ((w or 0.0) + 0.0) % 360.0 }
 end
 
+-- (the same rules for a computer another resource adds: server/computers/added.lua)
+placed.labelOf, placed.styleOf, placed.groupsOf, placed.bossOf, placed.coordsOf = labelOf, styleOf, groupsOf, bossOf, coordsOf
+
 -- ── Registry + state ──────────────────────────────────────────────────────────────────────
 
 ---Write a record's fields into its registry entry (in place: sessions that are open keep reading
@@ -183,15 +186,21 @@ local function apply(r)
     def.world = r.world or nil
 end
 
+---The computers other resources added (server/computers/added.lua sets this), published beside the
+---placed ones: clients stand and target both the same way.
+---@type fun(): table<string, table>
+placed.extra = function() return {} end
+
 ---Publish the placed computers. String keys: a sparse integer-keyed table does not survive
 ---state-bag serialisation as a map.
 local function publish()
-    local out = {}
+    local out = placed.extra()
     for id, r in pairs(list) do
         out[tostring(id)] = { id = id, key = r.key, prop = r.prop, style = r.style, coords = r.coords, groups = r.groups, world = r.world or nil }
     end
     GlobalState[STATE_KEY] = out
 end
+placed.publish = publish
 
 ---Track a record: build its registry entry and add it.
 ---@param r table a PlacedComputer that has no key / def yet

@@ -17,7 +17,9 @@
     "notes_full": "Llegaste al límite de notas.",
     "phone_unavailable": "La conexión con el teléfono no está disponible ahora.",
     "computer_changed": "Un administrador movió o quitó esta computadora.",
-    "computer_updated": "Un administrador cambió esta computadora. Ábrela de nuevo."
+    "computer_updated": "Un administrador cambió esta computadora. Ábrela de nuevo.",
+    "computer_gone": "Esta computadora ya no está aquí.",
+    "computer_reset": "Esta computadora cambió. Ábrela de nuevo."
   },
   "logs": {
     "cleared": "Se borró el registro de auditoría. Responsable: %s",
@@ -1793,6 +1795,8 @@
         "source_world": "Elegida",
         "source_config": "Config",
         "source_model": "Todos los props",
+        "source_script": "Script",
+        "script_hint": "Añadida por %s con el export AddComputer: cámbiala allí",
         "more_models": "+%s más",
         "in_use_by": "En uso: %s",
         "in_use_count": "%s en uso",

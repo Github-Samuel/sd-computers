@@ -108,6 +108,22 @@ local function inGroups(src, groups)
 end
 session.inGroups = inGroups
 
+---Does a computer's `owners` list (AddComputer export) let this character in? nil = it has none,
+---and anyone its job lock lets in may use it.
+---@param def table computers.lua entry
+---@param citizenid string
+---@return boolean
+local function isOwner(def, citizenid)
+    return def.owners == nil or def.owners[citizenid] == true
+end
+
+---What the computerOpened / computerSignedIn / computerClosed events tell other resources.
+---@param s ComputerSession
+---@return table info
+local function eventInfo(s)
+    return { computer = s.def.id, instance = s.instance, citizenid = s.citizenid }
+end
+
 ---Within reach of the machine? (server-side position, never the client's word)
 ---@param src integer
 ---@param coords vector3
@@ -327,6 +343,7 @@ function session.open(src, id, coords, styleOverride)
 
     local citizenid = player.getIdentifier(src)
     if not citizenid then return { ok = false, error = locale('err.no_character') } end
+    if not isOwner(def, citizenid) then return { ok = false, error = locale('err.no_access') } end
 
     local instance = registry.instanceId(def, at)
     local holder = busy[instance]
@@ -359,8 +376,8 @@ function session.open(src, id, coords, styleOverride)
         if not ok then log.error('session', 'open hook failed: %s', tostring(err)) end
     end
     log.debug('session', 'open src=%s computer=%s instance=%s style=%s boss=%s', src, id, instance, style, tostring(bossJob))
+    TriggerEvent('sd-computers:server:computerOpened', src, eventInfo(s))
 
-    local pins = config.Security and config.Security.Pins or {}
     local D = config.Desktop
     local S = registry.styleDef(style)
     local desk = lists(src, s)
@@ -369,7 +386,7 @@ function session.open(src, id, coords, styleOverride)
         data = {
             computer = {
                 id = def.id, label = def.label or def.id, hostname = s.hostname, ip = s.ip, instance = instance, style = style,
-                requiresPin = pins[def.id] ~= nil, lockedFor = lockoutLeft(citizenid, def.id),
+                requiresPin = registry.pin(def) ~= nil, lockedFor = lockoutLeft(citizenid, def.id),
                 apps = desk.apps, pinned = desk.pinned, desktopIcons = desk.desktopIcons, badges = desk.badges,
             },
             user = { name = s.name, initials = initials(s.name), job = jobLabel(src) },
@@ -403,7 +420,7 @@ function session.signIn(src, pin)
     if not inReach(src, s.coords) then session.close(src); return { ok = false, error = locale('err.too_far') } end
 
     local sec = config.Security or {}
-    local expected = sec.Pins and sec.Pins[s.def.id]
+    local expected = registry.pin(s.def)
     if expected ~= nil then
         local key = s.citizenid .. '|' .. s.def.id
         local left = lockoutLeft(s.citizenid, s.def.id)
@@ -435,6 +452,7 @@ function session.signIn(src, pin)
         level = 'success', source = 'Security', eventId = logs.EVENT.LOGON,
         message = locale('logs.logon', s.name),
     }, session.actor(s))
+    TriggerEvent('sd-computers:server:computerSignedIn', src, eventInfo(s))
     return { ok = true }
 end
 
@@ -495,6 +513,7 @@ function session.close(src, force)
     end
     if force then TriggerClientEvent('sd-computers:client:forceClose', src, locale(force)) end
     log.debug('session', 'close src=%s instance=%s force=%s', src, s.instance, tostring(force))
+    TriggerEvent('sd-computers:server:computerClosed', src, eventInfo(s))
 end
 
 ---The gate every app action passes: an open, signed-in session, still in reach, still allowed by
@@ -510,7 +529,7 @@ function session.guard(src, app)
         session.close(src, 'err.too_far')
         return nil, locale('err.too_far')
     end
-    if not inGroups(src, s.def.groups) then
+    if not inGroups(src, s.def.groups) or not isOwner(s.def, s.citizenid) then
         session.close(src, 'err.no_access')
         return nil, locale('err.no_access')
     end
