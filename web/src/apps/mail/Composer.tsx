@@ -87,7 +87,8 @@ export default function Composer({ init, width, onBack }: { init: ComposeInit; w
         setSave({ state: 'error' });
         return;
       }
-      const id = Number(r.data.id);
+      // Built-in Mail ids are numbers, the phone's are strings - keep it as given.
+      const id = r.data.id;
       const created = id !== draftId.current;
       draftId.current = id;
       savedVersion.current = v;
